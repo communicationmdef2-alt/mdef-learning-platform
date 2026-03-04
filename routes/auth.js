@@ -36,7 +36,7 @@ module.exports = function(db) {
             const userId = result.lastInsertRowid;
 
             // Log session
-            db.prepare('INSERT INTO sessions_log (user_id, ip_address, user_agent) VALUES (?, ?, ?)').run(
+            const regLog = db.prepare('INSERT INTO sessions_log (user_id, ip_address, user_agent) VALUES (?, ?, ?)').run(
                 userId, req.ip, req.get('user-agent')
             );
 
@@ -47,6 +47,7 @@ module.exports = function(db) {
             req.session.userId = userId;
             req.session.role = 'learner';
             req.session.siteId = site_id;
+            req.session.sessionLogId = regLog.lastInsertRowid;
 
             res.json({ 
                 success: true, 

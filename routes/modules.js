@@ -90,35 +90,30 @@ module.exports = function(db) {
                 'SELECT COUNT(*) as count FROM user_progress WHERE user_id = ? AND completed = 1'
             ).get(userId).count;
 
-            const connections = db.prepare(
-                'SELECT COUNT(*) as count FROM sessions_log WHERE user_id = ?'
-            ).get(userId).count;
+            const totalModules = db.prepare('SELECT COUNT(*) as count FROM modules').get().count;
 
-            const totalTime = db.prepare(
-                'SELECT COALESCE(SUM(duration_minutes), 0) as total FROM sessions_log WHERE user_id = ?'
-            ).get(userId).total;
-
-            // Modules complétés
-            const modules = db.prepare('SELECT id FROM modules').all();
-            let completedModules = 0;
-            for (const m of modules) {
-                const moduleLessons = db.prepare('SELECT id FROM lessons WHERE module_id = ?').all(m.id);
-                const moduleCompleted = db.prepare(`
-                    SELECT COUNT(*) as count FROM user_progress 
-                    WHERE user_id = ? AND completed = 1 AND lesson_id IN (${moduleLessons.map(() => '?').join(',')})
-                `).get(userId, ...moduleLessons.map(l => l.id)).count;
-                if (moduleCompleted === moduleLessons.length) completedModules++;
-            }
+            // Modules complétés — requête SQL unique, sans boucle N+1
+            const completedModules = db.prepare(`
+                SELECT COUNT(*) as count FROM (
+                    SELECT l.module_id
+                    FROM user_progress up
+                    JOIN lessons l ON up.lesson_id = l.id
+                    WHERE up.user_id = ? AND up.completed = 1
+                    GROUP BY l.module_id
+                    HAVING COUNT(DISTINCT up.lesson_id) = (
+                        SELECT COUNT(*) FROM lessons WHERE module_id = l.module_id
+                    )
+                )
+            `).get(userId).count;
 
             res.json({
                 total_lessons: totalLessons,
                 completed_lessons: completedLessons,
                 completed_modules: completedModules,
-                total_modules: modules.length,
-                connections,
-                total_time_minutes: totalTime
+                total_modules: totalModules
             });
         } catch(err) {
+            console.error('Stats error:', err);
             res.status(500).json({ error: 'Erreur serveur' });
         }
     });

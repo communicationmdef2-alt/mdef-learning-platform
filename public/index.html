@@ -195,6 +195,19 @@
         .admin-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:32px;flex-wrap:wrap}
         .admin-search{padding:10px 18px;border-radius:100px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:var(--text-primary);font-size:14px;font-family:inherit;outline:none;min-width:250px;transition:var(--transition)}
         .admin-search:focus{border-color:var(--mdef-turquoise);box-shadow:0 0 0 4px rgba(0,163,163,.1)}
+        .admin-tabs{display:flex;gap:4px;border-bottom:1px solid var(--glass-border);margin-bottom:36px}
+        .admin-tab-btn{padding:12px 28px;border:none;border-bottom:3px solid transparent;margin-bottom:-1px;background:none;color:var(--text-secondary);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition);display:flex;align-items:center;gap:8px}
+        .admin-tab-btn:hover{color:var(--text-primary)}
+        .admin-tab-btn.active{color:var(--mdef-turquoise);border-bottom-color:var(--mdef-turquoise)}
+        .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px}
+        .status-pill.active{background:rgba(0,168,107,.12);color:var(--mdef-green)}
+        .status-pill.inactive{background:rgba(255,107,53,.12);color:#ff8f65}
+        .icon-btn{padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--transition);border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-secondary)}
+        .icon-btn:hover{background:var(--glass-hover);color:var(--text-primary)}
+        .icon-btn.danger{border-color:rgba(255,107,53,.3);color:#ff8f65}
+        .icon-btn.danger:hover{background:rgba(255,107,53,.1)}
+        .icon-btn.success{border-color:rgba(0,168,107,.3);color:var(--mdef-green)}
+        .icon-btn.success:hover{background:rgba(0,168,107,.1)}
 
         /* TOAST */
         .toast{position:fixed;bottom:30px;right:30px;background:rgba(0,168,107,.95);color:#fff;padding:16px 28px;border-radius:var(--radius-md);font-weight:600;font-size:14px;z-index:10000;animation:fadeUp .4s ease;display:none;backdrop-filter:blur(10px);box-shadow:0 10px 40px rgba(0,0,0,.3)}
@@ -282,9 +295,8 @@
                 <div class="dash-welcome animate-up"><h1>Bonjour, <span id="dashUserName">—</span> 👋</h1><p>Continuez votre apprentissage là où vous vous êtes arrêté.</p></div>
                 <div class="dash-stats">
                     <div class="dash-stat animate-up d1"><div class="dash-stat-label">Modules terminés</div><div class="dash-stat-value turquoise" id="statCompleted">0/4</div></div>
-                    <div class="dash-stat animate-up d2"><div class="dash-stat-label">Leçons vues</div><div class="dash-stat-value blue" id="statLessons">0</div></div>
-                    <div class="dash-stat animate-up d3"><div class="dash-stat-label">Temps total</div><div class="dash-stat-value green" id="statTime">0min</div></div>
-                    <div class="dash-stat animate-up d4"><div class="dash-stat-label">Connexions</div><div class="dash-stat-value orange" id="statConnections">1</div></div>
+                    <div class="dash-stat animate-up d2"><div class="dash-stat-label">Leçons complétées</div><div class="dash-stat-value blue" id="statLessons">0</div></div>
+                    <div class="dash-stat animate-up d3"><div class="dash-stat-label">Progression globale</div><div class="dash-stat-value green" id="statProgress">0%</div></div>
                 </div>
                 <div class="section-header animate-up d2"><div class="section-label">Vos modules</div><div class="section-title">Continuez votre parcours</div></div>
                 <div class="modules-grid" id="modulesGrid"></div>
@@ -312,19 +324,31 @@
         <!-- ADMIN -->
         <div class="page" id="page-admin">
             <div class="dashboard">
-                <div class="dash-welcome animate-up"><h1>Administration</h1><p>Suivi des apprenants par mission locale</p></div>
+                <div class="dash-welcome animate-up"><h1>Administration</h1><p id="adminSubtitle">Suivi des apprenants par mission locale</p></div>
                 <div class="dash-stats" id="adminStats">
                     <div class="dash-stat animate-up d1"><div class="dash-stat-label">Total inscrits</div><div class="dash-stat-value turquoise" id="adminTotal">0</div></div>
                     <div class="dash-stat animate-up d2"><div class="dash-stat-label">Connectés aujourd'hui</div><div class="dash-stat-value blue" id="adminToday">0</div></div>
                     <div class="dash-stat animate-up d3"><div class="dash-stat-label">Modules complétés</div><div class="dash-stat-value green" id="adminCompleted">0</div></div>
                     <div class="dash-stat animate-up d4"><div class="dash-stat-label">Connexions totales</div><div class="dash-stat-value orange" id="adminConnections">0</div></div>
                 </div>
-                <div class="section-header animate-up d2" style="margin-bottom:24px"><div class="section-label">Apprenants</div><div class="section-title">Vue par mission locale</div></div>
-                <div class="admin-toolbar" id="adminToolbar"></div>
-                <div class="admin-table-wrap animate-up d3">
-                    <table class="admin-table"><thead><tr><th>Apprenant</th><th>Mission Locale</th><th>Progression</th><th>Temps total</th><th>Connexions</th><th>Dernière activité</th></tr></thead>
-                    <tbody id="adminTableBody"></tbody></table>
+                <!-- Onglets (superadmin uniquement) -->
+                <div id="adminTabsContainer" style="display:none">
+                    <div class="admin-tabs">
+                        <button class="admin-tab-btn active" onclick="switchAdminTab('learners',this)">👥 Apprenants</button>
+                        <button class="admin-tab-btn" onclick="switchAdminTab('admins',this)">🛡️ Administrateurs</button>
+                    </div>
                 </div>
+                <!-- Section Apprenants -->
+                <div id="adminLearnersSection">
+                    <div class="section-header animate-up d2" style="margin-bottom:24px"><div class="section-label">Apprenants</div><div class="section-title">Vue par mission locale</div></div>
+                    <div class="admin-toolbar" id="adminToolbar"></div>
+                    <div class="admin-table-wrap animate-up d3">
+                        <table class="admin-table"><thead><tr><th>Apprenant</th><th>Mission Locale</th><th>Modules</th><th>Progression</th><th>Connexions</th><th>Dernière activité</th></tr></thead>
+                        <tbody id="adminTableBody"></tbody></table>
+                    </div>
+                </div>
+                <!-- Section Administrateurs (superadmin only) -->
+                <div id="adminAdminsSection" style="display:none"></div>
             </div>
         </div>
     </div>
@@ -351,6 +375,7 @@ let modulesData = [];
 let currentModule = null;
 let currentLessonIndex = 0;
 let adminFilter = 'all';
+let adminModuleFilter = 'all';
 
 // ======================== INIT ========================
 async function init() {
@@ -494,10 +519,9 @@ async function renderDashboard() {
 
         const s = statsRes;
         document.getElementById('statCompleted').textContent = s.completed_modules + '/' + s.total_modules;
-        document.getElementById('statLessons').textContent = s.completed_lessons;
-        const t = s.total_time_minutes;
-        document.getElementById('statTime').textContent = t < 60 ? t + 'min' : Math.floor(t/60) + 'h' + (t%60 || '');
-        document.getElementById('statConnections').textContent = s.connections;
+        document.getElementById('statLessons').textContent = s.completed_lessons + '/' + s.total_lessons;
+        const pct = s.total_lessons > 0 ? Math.round((s.completed_lessons / s.total_lessons) * 100) : 0;
+        document.getElementById('statProgress').textContent = pct + '%';
 
         document.getElementById('modulesGrid').innerHTML = modulesData.map((m, i) => {
             const pct = m.lessons_count > 0 ? Math.round((m.completed_count / m.lessons_count) * 100) : 0;
@@ -613,8 +637,24 @@ async function renderAdmin() {
         return navigate('dashboard');
     }
 
+    // Réinitialiser les filtres à chaque ouverture
+    adminFilter = 'all';
+    adminModuleFilter = 'all';
+
+    // Montrer onglets uniquement pour superadmin, reset à l'onglet Apprenants
+    const isSuperAdmin = currentUser.role === 'superadmin';
+    document.getElementById('adminTabsContainer').style.display = isSuperAdmin ? '' : 'none';
+    document.getElementById('adminLearnersSection').style.display = '';
+    document.getElementById('adminAdminsSection').style.display = 'none';
+    document.querySelectorAll('.admin-tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+
     try {
-        const stats = await api('/api/admin/stats');
+        const [stats, modulesRes] = await Promise.all([
+            api('/api/admin/stats'),
+            api('/api/modules')
+        ]);
+        const modules = modulesRes.modules;
+
         document.getElementById('adminTotal').textContent = stats.total_learners;
         document.getElementById('adminToday').textContent = stats.today_active;
         document.getElementById('adminCompleted').textContent = stats.total_modules_completed;
@@ -623,7 +663,11 @@ async function renderAdmin() {
         document.getElementById('adminToolbar').innerHTML = `
             <button class="admin-filter-btn active" onclick="filterAdmin('all',this)">Tous (${stats.total_learners})</button>
             ${stats.sites.map(s => `<button class="admin-filter-btn" onclick="filterAdmin('${s.id}',this)">${s.short_name} (${s.learners_count})</button>`).join('')}
-            <input class="admin-search" placeholder="🔍 Rechercher un apprenant..." oninput="searchAdmin(this.value)">
+            <input id="adminSearchInput" class="admin-search" placeholder="🔍 Rechercher par nom ou email..." oninput="searchAdmin(this.value)">
+            <select id="adminModuleSelect" class="admin-search" onchange="filterModule(this.value)" style="min-width:190px;cursor:pointer">
+                <option value="all">📚 Tous les modules</option>
+                ${modules.map(m => `<option value="${m.id}">${m.icon} ${m.title}</option>`).join('')}
+            </select>
             <button class="admin-export-btn" onclick="exportCSV()">📊 Exporter CSV</button>
         `;
 
@@ -631,28 +675,29 @@ async function renderAdmin() {
     } catch(e) { console.error(e); showToast('⚠️ ' + e.message, '#FF6B35'); }
 }
 
-async function loadAdminTable(site, search = '') {
+async function loadAdminTable(site, search = '', module = 'all') {
     try {
         let url = '/api/admin/learners?site=' + site;
         if (search) url += '&search=' + encodeURIComponent(search);
+        if (module && module !== 'all') url += '&module=' + encodeURIComponent(module);
         const { learners } = await api(url);
         const tbody = document.getElementById('adminTableBody');
 
         if (!learners.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-tertiary)">Aucun apprenant</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-tertiary)">Aucun apprenant trouvé</td></tr>';
             return;
         }
 
         tbody.innerHTML = learners.map(l => {
-            const t = l.total_time;
-            const timeStr = t < 60 ? t + 'min' : Math.floor(t/60) + 'h' + (t%60 || '');
-            const lastActive = l.last_active ? new Date(l.last_active).toLocaleDateString('fr-FR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            const lastActive = l.last_active
+                ? new Date(l.last_active).toLocaleDateString('fr-FR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+                : '—';
             const badgeClass = l.site_id || '';
             return `<tr>
-                <td class="user-name">${l.name}</td>
+                <td class="user-name">${l.name}<br><small style="font-size:11px;color:var(--text-tertiary);font-weight:400">${l.email}</small></td>
                 <td><span class="admin-badge ${badgeClass}">${l.site_name || '—'}</span></td>
+                <td>${l.modules_completed || 0}/${l.total_modules || 4}</td>
                 <td><div class="progress-mini"><div class="progress-mini-fill" style="width:${l.progress_pct}%"></div></div>${l.progress_pct}%</td>
-                <td>${timeStr}</td>
                 <td>${l.connections}</td>
                 <td>${lastActive}</td>
             </tr>`;
@@ -664,17 +709,241 @@ function filterAdmin(site, btn) {
     adminFilter = site;
     document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    loadAdminTable(site);
+    const searchVal = document.getElementById('adminSearchInput')?.value || '';
+    loadAdminTable(site, searchVal, adminModuleFilter);
+}
+
+function filterModule(module) {
+    adminModuleFilter = module;
+    const searchVal = document.getElementById('adminSearchInput')?.value || '';
+    loadAdminTable(adminFilter, searchVal, module);
 }
 
 let searchTimeout;
 function searchAdmin(val) {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => loadAdminTable(adminFilter, val), 300);
+    searchTimeout = setTimeout(() => loadAdminTable(adminFilter, val, adminModuleFilter), 300);
 }
 
 function exportCSV() {
-    window.open('/api/admin/export?site=' + adminFilter, '_blank');
+    let url = '/api/admin/export?site=' + adminFilter;
+    if (adminModuleFilter && adminModuleFilter !== 'all') url += '&module=' + encodeURIComponent(adminModuleFilter);
+    window.open(url, '_blank');
+}
+
+// ======================== GESTION ADMINS (superadmin) ========================
+function switchAdminTab(tab, btn) {
+    document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.getElementById('adminLearnersSection').style.display = tab === 'learners' ? '' : 'none';
+    document.getElementById('adminAdminsSection').style.display = tab === 'admins' ? '' : 'none';
+    if (tab === 'admins') renderAdminsPanel();
+}
+
+let _adminSites = [];
+
+async function renderAdminsPanel() {
+    const section = document.getElementById('adminAdminsSection');
+    section.innerHTML = `<div style="color:var(--text-tertiary);padding:60px;text-align:center">Chargement...</div>`;
+    try {
+        const [{ admins }, { sites }] = await Promise.all([api('/api/admin/admins'), api('/api/sites')]);
+        _adminSites = sites;
+
+        section.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;flex-wrap:wrap;gap:16px">
+                <div>
+                    <div class="section-label">Gestion des accès</div>
+                    <div class="section-title" style="font-size:28px">Administrateurs</div>
+                </div>
+                <button onclick="openCreateAdminModal()" style="padding:12px 24px;border-radius:100px;font-size:14px;font-weight:700;cursor:pointer;border:none;background:var(--gradient-main);color:#fff;font-family:inherit;display:flex;align-items:center;gap:8px">+ Créer un admin</button>
+            </div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th>Administrateur</th><th>Site assigné</th><th>Statut</th><th>Dernière connexion</th><th>Actions</th></tr></thead>
+                    <tbody>${admins.map(a => renderAdminRow(a)).join('')}</tbody>
+                </table>
+            </div>`;
+    } catch(e) {
+        section.innerHTML = `<div style="color:#ff8f65;padding:40px;text-align:center">Erreur : ${e.message}</div>`;
+    }
+}
+
+function renderAdminRow(a) {
+    const isSelf = currentUser && a.id === currentUser.id;
+    const isSuperadmin = a.role === 'superadmin';
+    const lastActive = a.last_active
+        ? new Date(a.last_active).toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'})
+        : 'Jamais';
+    const siteSelect = !isSuperadmin
+        ? `<select onchange="changeSite(${a.id},this.value)" style="padding:7px 12px;border-radius:var(--radius-sm);background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:var(--text-primary);font-size:13px;font-family:inherit;cursor:pointer">
+            ${_adminSites.map(s => `<option value="${s.id}" ${s.id === a.site_id ? 'selected' : ''}>${s.short_name}</option>`).join('')}
+          </select>`
+        : `<span style="color:var(--text-tertiary);font-size:13px">Tous les sites</span>`;
+    const statusPill = `<span class="status-pill ${a.is_active ? 'active' : 'inactive'}">
+        <span style="width:7px;height:7px;border-radius:50%;background:currentColor"></span>
+        ${a.is_active ? 'Actif' : 'Désactivé'}
+    </span>`;
+    const roleBadge = isSuperadmin
+        ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:rgba(0,86,179,.2);color:#4d9fff;margin-left:6px;vertical-align:middle">SUPERADMIN</span>`
+        : '';
+    const selfBadge = isSelf ? `<span style="font-size:10px;color:var(--mdef-turquoise);margin-left:6px">(vous)</span>` : '';
+    const actions = !isSelf ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button onclick="toggleAdminActive(${a.id},${a.is_active})" class="icon-btn ${a.is_active ? 'danger' : 'success'}">
+                ${a.is_active ? '🔒 Désactiver' : '🔓 Réactiver'}
+            </button>
+            <button onclick="openResetPasswordModal(${a.id})" class="icon-btn">🔑 Réinit. mdp</button>
+        </div>` : `<span style="color:var(--text-tertiary);font-size:12px">Compte actuel</span>`;
+
+    return `<tr>
+        <td><div class="user-name">${a.name}${roleBadge}${selfBadge}</div>
+            <small style="font-size:11px;color:var(--text-tertiary)">${a.email}</small></td>
+        <td>${siteSelect}</td>
+        <td>${statusPill}</td>
+        <td style="font-size:13px;color:var(--text-tertiary)">${lastActive}</td>
+        <td>${actions}</td>
+    </tr>`;
+}
+
+// Génère un mot de passe lisible (sans caractères ambigus : 0/O, 1/l/I)
+function generatePassword() {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const special = '@#&!';
+    const all = upper + lower + digits + special;
+    // Garantit au moins 1 de chaque catégorie
+    let pwd = upper[Math.floor(Math.random()*upper.length)]
+            + lower[Math.floor(Math.random()*lower.length)]
+            + digits[Math.floor(Math.random()*digits.length)]
+            + special[Math.floor(Math.random()*special.length)];
+    for (let i = 4; i < 12; i++) pwd += all[Math.floor(Math.random()*all.length)];
+    // Mélange les caractères
+    return pwd.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+function openCreateAdminModal() {
+    const existing = document.getElementById('createAdminModal');
+    if (existing) existing.remove();
+    const pwd = generatePassword();
+    const m = document.createElement('div');
+    m.id = 'createAdminModal';
+    m.className = 'modal-overlay show';
+    m.innerHTML = `
+        <div class="modal" style="max-width:520px;text-align:left;padding:40px;overflow-y:auto;max-height:90vh">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+                <div><div class="section-label" style="margin-bottom:4px">Superadmin</div><h2 style="font-size:22px;font-weight:800;margin:0">Créer un administrateur</h2></div>
+                <button onclick="document.getElementById('createAdminModal').remove()" style="background:none;border:none;color:var(--text-tertiary);font-size:24px;cursor:pointer;line-height:1;padding:4px">×</button>
+            </div>
+            <div id="createAdminError" class="auth-error"></div>
+            <div class="form-group"><label class="form-label">Prénom & Nom</label><input class="form-input" id="newAdminName" placeholder="Marie Dupont" autocomplete="off"></div>
+            <div class="form-group"><label class="form-label">Email professionnel</label><input class="form-input" type="email" id="newAdminEmail" placeholder="marie.dupont@mission-locale.fr" autocomplete="off"></div>
+            <div class="form-group"><label class="form-label">Mission Locale assignée</label>
+                <select class="form-select" id="newAdminSite">
+                    <option value="">Sélectionner un site</option>
+                    ${_adminSites.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group"><label class="form-label">Mot de passe temporaire</label>
+                <div style="display:flex;gap:8px">
+                    <input class="form-input" id="newAdminPassword" style="font-family:monospace;letter-spacing:1px" readonly value="${pwd}">
+                    <button onclick="document.getElementById('newAdminPassword').value=generatePassword()" title="Regénérer" style="padding:0 16px;border-radius:var(--radius-sm);border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-secondary);cursor:pointer;font-size:20px;white-space:nowrap;transition:var(--transition)">🔄</button>
+                </div>
+                <p style="font-size:12px;color:var(--text-tertiary);margin-top:8px">⚠️ Ce mot de passe s'affiche une seule fois. Notez-le pour le communiquer à l'admin.</p>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:4px">
+                <button onclick="document.getElementById('createAdminModal').remove()" class="icon-btn" style="flex:1;padding:14px;border-radius:var(--radius-sm);font-size:14px">Annuler</button>
+                <button onclick="submitCreateAdmin()" id="createAdminBtn" style="flex:2;padding:14px;border-radius:var(--radius-sm);border:none;background:var(--gradient-main);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Créer le compte →</button>
+            </div>
+        </div>`;
+    document.body.appendChild(m);
+    setTimeout(() => document.getElementById('newAdminName')?.focus(), 100);
+}
+
+async function submitCreateAdmin() {
+    const name = document.getElementById('newAdminName').value.trim();
+    const email = document.getElementById('newAdminEmail').value.trim();
+    const site_id = document.getElementById('newAdminSite').value;
+    const password = document.getElementById('newAdminPassword').value;
+    const errEl = document.getElementById('createAdminError');
+    errEl.classList.remove('show');
+
+    if (!name || !email || !site_id) {
+        errEl.textContent = 'Veuillez remplir tous les champs.';
+        errEl.classList.add('show');
+        return;
+    }
+    const btn = document.getElementById('createAdminBtn');
+    btn.disabled = true; btn.textContent = 'Création en cours...';
+    try {
+        await api('/api/admin/admins', 'POST', { name, email, site_id, password });
+        // Afficher le résumé des identifiants
+        document.querySelector('#createAdminModal .modal').innerHTML = `
+            <div style="text-align:center">
+                <div style="width:72px;height:72px;background:var(--gradient-accent);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px">✅</div>
+                <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">Compte créé !</h2>
+                <p style="color:var(--text-secondary);margin-bottom:24px">Communiquez ces identifiants à l'administrateur :</p>
+                <div style="background:rgba(255,255,255,.04);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:20px 24px;text-align:left;margin-bottom:20px">
+                    <div style="margin-bottom:14px"><div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Email</div><div style="font-family:monospace;font-size:14px;color:var(--text-primary);word-break:break-all">${email}</div></div>
+                    <div><div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Mot de passe temporaire</div><div style="font-family:monospace;font-size:20px;font-weight:700;color:var(--mdef-turquoise);letter-spacing:3px">${password}</div></div>
+                </div>
+                <div style="background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:20px;font-size:12px;color:#ff8f65;text-align:left">⚠️ Ce mot de passe ne sera plus jamais affiché. Notez-le maintenant.</div>
+                <div style="display:flex;gap:10px">
+                    <button onclick="navigator.clipboard.writeText('Email: ${email}\\nMot de passe: ${password}').then(()=>showToast('✅ Copié !'))" class="icon-btn" style="flex:1;padding:12px;border-radius:var(--radius-sm);font-size:13px">📋 Copier</button>
+                    <button onclick="document.getElementById('createAdminModal').remove();renderAdminsPanel()" style="flex:2;padding:12px;border-radius:var(--radius-sm);border:none;background:var(--gradient-main);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Fermer</button>
+                </div>
+            </div>`;
+    } catch(e) {
+        errEl.textContent = e.message; errEl.classList.add('show');
+        btn.disabled = false; btn.textContent = 'Créer le compte →';
+    }
+}
+
+async function toggleAdminActive(id, currentActive) {
+    try {
+        const { is_active } = await api('/api/admin/admins/' + id, 'PATCH', { action: 'toggle_active' });
+        showToast(is_active ? '🔓 Compte réactivé' : '🔒 Compte désactivé');
+        renderAdminsPanel();
+    } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+async function changeSite(id, site_id) {
+    try {
+        await api('/api/admin/admins/' + id, 'PATCH', { action: 'change_site', site_id });
+        showToast('✅ Site mis à jour');
+    } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+function openResetPasswordModal(id) {
+    const existing = document.getElementById('resetPwdModal');
+    if (existing) existing.remove();
+    const newPwd = generatePassword();
+    const m = document.createElement('div');
+    m.id = 'resetPwdModal';
+    m.className = 'modal-overlay show';
+    m.innerHTML = `
+        <div class="modal" style="max-width:440px">
+            <div class="modal-icon">🔑</div>
+            <h2>Réinitialiser le mot de passe ?</h2>
+            <p>Nouveau mot de passe temporaire généré :</p>
+            <div style="background:rgba(255,255,255,.04);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:20px;margin-bottom:20px">
+                <div style="font-family:monospace;font-size:22px;font-weight:700;color:var(--mdef-turquoise);letter-spacing:3px">${newPwd}</div>
+            </div>
+            <div style="background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:24px;font-size:12px;color:#ff8f65;text-align:left">⚠️ Notez ce mot de passe avant de confirmer — il ne sera plus affiché.</div>
+            <div style="display:flex;gap:12px">
+                <button onclick="document.getElementById('resetPwdModal').remove()" class="icon-btn" style="flex:1;padding:14px;border-radius:var(--radius-sm);font-size:14px">Annuler</button>
+                <button onclick="confirmResetPassword(${id},'${newPwd}')" style="flex:2;padding:14px;border-radius:var(--radius-sm);border:none;background:var(--gradient-main);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Confirmer</button>
+            </div>
+        </div>`;
+    document.body.appendChild(m);
+}
+
+async function confirmResetPassword(id, password) {
+    try {
+        await api('/api/admin/admins/' + id, 'PATCH', { action: 'reset_password', password });
+        document.getElementById('resetPwdModal').remove();
+        showToast('✅ Mot de passe réinitialisé');
+    } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
 }
 
 // ======================== UTILS ========================
