@@ -17,12 +17,18 @@ module.exports = function(db) {
             if (isSuperAdmin) {
                 total = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'learner'").get().count;
 
+                // Uniquement les apprenants (role='learner'), pas les admins/superadmins
                 todayActive = db.prepare(`
-                    SELECT COUNT(DISTINCT user_id) as count FROM sessions_log
-                    WHERE DATE(login_at) = DATE(?)
+                    SELECT COUNT(DISTINCT sl.user_id) as count
+                    FROM sessions_log sl
+                    JOIN users u ON sl.user_id = u.id
+                    WHERE DATE(sl.login_at) = DATE(?) AND u.role = 'learner'
                 `).get(today).count;
 
-                totalConnections = db.prepare('SELECT COUNT(*) as count FROM sessions_log').get().count;
+                totalConnections = db.prepare(`
+                    SELECT COUNT(*) as count FROM sessions_log sl
+                    JOIN users u ON sl.user_id = u.id WHERE u.role = 'learner'
+                `).get().count;
 
                 totalCompleted = db.prepare(`
                     SELECT COUNT(*) as count FROM (
@@ -47,12 +53,12 @@ module.exports = function(db) {
                     SELECT COUNT(DISTINCT sl.user_id) as count
                     FROM sessions_log sl
                     JOIN users u ON sl.user_id = u.id
-                    WHERE DATE(sl.login_at) = DATE(?) AND u.site_id = ?
+                    WHERE DATE(sl.login_at) = DATE(?) AND u.site_id = ? AND u.role = 'learner'
                 `).get(today, adminSiteId).count;
 
                 totalConnections = db.prepare(`
                     SELECT COUNT(*) as count FROM sessions_log sl
-                    JOIN users u ON sl.user_id = u.id WHERE u.site_id = ?
+                    JOIN users u ON sl.user_id = u.id WHERE u.site_id = ? AND u.role = 'learner'
                 `).get(adminSiteId).count;
 
                 totalCompleted = db.prepare(`
@@ -81,7 +87,7 @@ module.exports = function(db) {
                 ).get(s.id).count;
                 const siteConnections = db.prepare(`
                     SELECT COUNT(*) as count FROM sessions_log sl
-                    JOIN users u ON sl.user_id = u.id WHERE u.site_id = ?
+                    JOIN users u ON sl.user_id = u.id WHERE u.site_id = ? AND u.role = 'learner'
                 `).get(s.id).count;
                 return { ...s, learners_count: count, connections: siteConnections };
             });
