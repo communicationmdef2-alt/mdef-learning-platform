@@ -1,0 +1,6 @@
+node_modules/
+db/mdef.db
+*.db
+.env
+.DS_Store
+{public,views,db,routes,middleware}/

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDEF GPS — Plateforme d'Apprentissage</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mdef-blue: #0056B3;
+            --mdef-blue-light: #0070E0;
+            --mdef-turquoise: #00A3A3;
+            --mdef-green: #00A86B;
+            --mdef-orange: #FF6B35;
+            --mdef-dark: #0A0E1A;
+            --glass-bg: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.08);
+            --glass-hover: rgba(255,255,255,0.08);
+            --text-primary: #F0F2F5;
+            --text-secondary: rgba(240,242,245,0.6);
+            --text-tertiary: rgba(240,242,245,0.35);
+            --gradient-main: linear-gradient(135deg, #0056B3, #00A3A3);
+            --gradient-accent: linear-gradient(135deg, #00A3A3, #00A86B);
+            --radius-sm: 12px; --radius-md: 16px; --radius-lg: 24px; --radius-xl: 32px;
+            --shadow-glow: 0 0 60px rgba(0,163,163,0.15);
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Plus Jakarta Sans',-apple-system,sans-serif; background:var(--mdef-dark); color:var(--text-primary); overflow-x:hidden; min-height:100vh; }
+
+        @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes scaleIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+        @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+        .animate-up { animation:fadeUp .8s cubic-bezier(.16,1,.3,1) forwards; opacity:0; }
+        .d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}.d4{animation-delay:.4s}
+
+        /* BG */
+        .bg-mesh{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+        .bg-orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.15}
+        .bg-orb-1{width:600px;height:600px;background:var(--mdef-blue);top:-200px;right:-100px}
+        .bg-orb-2{width:500px;height:500px;background:var(--mdef-turquoise);bottom:-150px;left:-100px}
+        .bg-grid{position:fixed;top:0;left:0;width:100%;height:100%;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+
+        /* NAVBAR */
+        .navbar{position:fixed;top:0;left:0;right:0;height:72px;background:rgba(10,14,26,.8);backdrop-filter:blur(24px) saturate(1.4);border-bottom:1px solid var(--glass-border);z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:0 40px}
+        .nav-logo{display:flex;align-items:center;gap:14px;cursor:pointer}
+        .nav-logo-icon{width:40px;height:40px;background:var(--gradient-main);border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff}
+        .nav-logo-text{font-size:18px;font-weight:700}
+        .nav-logo-text span{background:var(--gradient-main);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .nav-links{display:flex;align-items:center;gap:8px}
+        .nav-link{padding:8px 18px;border-radius:100px;font-size:14px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:var(--transition);border:none;background:none;font-family:inherit}
+        .nav-link:hover{color:var(--text-primary);background:var(--glass-hover)}
+        .nav-link.active{color:#fff;background:var(--gradient-main)}
+        .nav-user{display:flex;align-items:center;gap:12px}
+        .nav-btn{padding:10px 24px;border-radius:100px;font-size:14px;font-weight:600;cursor:pointer;transition:var(--transition);border:none;font-family:inherit}
+        .nav-btn-ghost{background:transparent;color:var(--text-secondary)}
+        .nav-btn-ghost:hover{color:var(--text-primary)}
+        .nav-btn-primary{background:var(--gradient-main);color:#fff}
+        .nav-btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(0,86,179,.4)}
+        .nav-user-avatar{width:36px;height:36px;border-radius:50%;background:var(--gradient-accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;cursor:pointer;transition:var(--transition)}
+        .nav-user-avatar:hover{transform:scale(1.08)}
+
+        .main{position:relative;z-index:1;padding-top:72px}
+        .page{display:none;min-height:calc(100vh - 72px)} .page.active{display:block}
+        .auth-page{display:none;min-height:calc(100vh - 72px);align-items:center;justify-content:center;padding:40px 20px}
+        .auth-page.active{display:flex}
+        .auth-card{width:100%;max-width:480px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--radius-xl);padding:48px 40px;backdrop-filter:blur(20px);animation:scaleIn .6s cubic-bezier(.16,1,.3,1)}
+        .auth-title{font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:8px;text-align:center}
+        .auth-subtitle{color:var(--text-secondary);text-align:center;margin-bottom:36px;font-size:15px;line-height:1.6}
+        .form-group{margin-bottom:20px}
+        .form-label{display:block;font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+        .form-input,.form-select{width:100%;padding:14px 18px;background:rgba(255,255,255,.05);border:1.5px solid var(--glass-border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:15px;font-family:inherit;transition:var(--transition);outline:none}
+        .form-input:focus,.form-select:focus{border-color:var(--mdef-turquoise);background:rgba(0,163,163,.05);box-shadow:0 0 0 4px rgba(0,163,163,.1)}
+        .form-input::placeholder{color:var(--text-tertiary)}
+        .form-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='rgba(240,242,245,0.5)' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center}
+        .form-select option{background:var(--mdef-dark);color:var(--text-primary)}
+        .btn-auth{width:100%;padding:16px;border:none;border-radius:var(--radius-sm);background:var(--gradient-main);color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;transition:var(--transition);margin-top:8px}
+        .btn-auth:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,86,179,.4)}
+        .btn-auth:disabled{opacity:.5;cursor:not-allowed;transform:none}
+        .auth-switch{text-align:center;margin-top:24px;color:var(--text-secondary);font-size:14px}
+        .auth-switch a{color:var(--mdef-turquoise);cursor:pointer;font-weight:600;text-decoration:none}
+        .auth-error{background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:20px;font-size:14px;color:#ff8f65;display:none}
+        .auth-error.show{display:block}
+
+        /* HERO */
+        .hero{min-height:calc(100vh - 72px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px}
+        .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:100px;font-size:13px;font-weight:600;color:var(--mdef-turquoise);margin-bottom:32px}
+        .hero-badge-dot{width:6px;height:6px;background:var(--mdef-turquoise);border-radius:50%;animation:pulse 2s infinite}
+        .hero h1{font-size:clamp(40px,6vw,72px);font-weight:800;letter-spacing:-2px;line-height:1.05;margin-bottom:24px;max-width:800px}
+        .hero h1 .gradient-text{background:var(--gradient-main);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .hero p{font-size:18px;color:var(--text-secondary);max-width:520px;line-height:1.7;margin-bottom:48px}
+        .hero-cta{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+        .btn{padding:16px 36px;border-radius:100px;font-size:16px;font-weight:700;cursor:pointer;transition:var(--transition);border:none;font-family:inherit;display:inline-flex;align-items:center;gap:10px;text-decoration:none}
+        .btn-primary{background:var(--gradient-main);color:#fff}
+        .btn-primary:hover{transform:translateY(-3px);box-shadow:0 16px 50px rgba(0,86,179,.5)}
+        .btn-secondary{background:var(--glass-bg);color:var(--text-primary);border:1px solid var(--glass-border)}
+        .btn-secondary:hover{background:var(--glass-hover);transform:translateY(-2px)}
+
+        /* DASHBOARD */
+        .dashboard{padding:48px 40px;max-width:1200px;margin:0 auto}
+        .dash-welcome{margin-bottom:48px}
+        .dash-welcome h1{font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
+        .dash-welcome p{color:var(--text-secondary);font-size:16px}
+        .dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:48px}
+        .dash-stat{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:28px;transition:var(--transition)}
+        .dash-stat:hover{border-color:rgba(0,163,163,.2)}
+        .dash-stat-label{font-size:13px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+        .dash-stat-value{font-size:36px;font-weight:800;letter-spacing:-1px}
+        .dash-stat-value.blue{color:var(--mdef-blue-light)}.dash-stat-value.turquoise{color:var(--mdef-turquoise)}.dash-stat-value.green{color:var(--mdef-green)}.dash-stat-value.orange{color:var(--mdef-orange)}
+
+        .section-header{margin-bottom:48px}
+        .section-label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--mdef-turquoise);margin-bottom:12px}
+        .section-title{font-size:36px;font-weight:800;letter-spacing:-1px}
+
+        .modules-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+        .module-card{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:32px 28px;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden}
+        .module-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:var(--gradient-main);opacity:0;transition:var(--transition)}
+        .module-card:hover{transform:translateY(-6px);border-color:rgba(0,163,163,.3);box-shadow:var(--shadow-glow)}
+        .module-card:hover::before{opacity:1}
+        .module-icon{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:20px}
+        .module-icon.blue{background:rgba(0,86,179,.15)}.module-icon.turquoise{background:rgba(0,163,163,.15)}.module-icon.green{background:rgba(0,168,107,.15)}.module-icon.orange{background:rgba(255,107,53,.15)}
+        .module-card h3{font-size:20px;font-weight:700;margin-bottom:10px}
+        .module-card p{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:20px}
+        .module-meta{display:flex;align-items:center;gap:16px;font-size:13px;color:var(--text-tertiary)}
+        .module-progress-bar{width:100%;height:4px;background:rgba(255,255,255,.06);border-radius:100px;margin-top:20px;overflow:hidden}
+        .module-progress-fill{height:100%;background:var(--gradient-accent);border-radius:100px;transition:width 1s cubic-bezier(.16,1,.3,1)}
+
+        /* LESSON */
+        .lesson-layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 72px)}
+        .lesson-sidebar{background:rgba(6,9,18,.95);border-right:1px solid var(--glass-border);padding:32px 0;overflow-y:auto;position:sticky;top:72px;height:calc(100vh - 72px)}
+        .sidebar-header{padding:0 24px 24px;border-bottom:1px solid var(--glass-border);margin-bottom:8px}
+        .sidebar-back{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);cursor:pointer;margin-bottom:16px;border:none;background:none;font-family:inherit;transition:var(--transition)}
+        .sidebar-back:hover{color:var(--text-primary)}
+        .sidebar-module-title{font-size:18px;font-weight:700;margin-bottom:12px}
+        .sidebar-progress{display:flex;align-items:center;gap:12px}
+        .sidebar-progress-bar{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden}
+        .sidebar-progress-fill{height:100%;background:var(--gradient-accent);border-radius:100px;transition:width .6s cubic-bezier(.16,1,.3,1)}
+        .sidebar-progress-text{font-size:13px;font-weight:600;color:var(--mdef-turquoise);white-space:nowrap}
+        .sidebar-lessons{padding:8px 12px}
+        .sidebar-lesson{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);margin-bottom:4px;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+        .sidebar-lesson:hover{background:var(--glass-hover)}
+        .sidebar-lesson.active{background:rgba(0,163,163,.1)}
+        .lesson-step-num{width:32px;height:32px;min-width:32px;border-radius:50%;border:2px solid var(--glass-border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text-secondary);transition:var(--transition)}
+        .sidebar-lesson.active .lesson-step-num{border-color:var(--mdef-turquoise);color:var(--mdef-turquoise);box-shadow:0 0 0 4px rgba(0,163,163,.15)}
+        .sidebar-lesson.completed .lesson-step-num{background:var(--mdef-green);border-color:var(--mdef-green);color:#fff}
+        .lesson-step-info h4{font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:3px}
+        .lesson-step-info span{font-size:12px;color:var(--text-tertiary)}
+        .sidebar-lesson.active .lesson-step-info h4{color:var(--mdef-turquoise)}
+
+        .lesson-content{padding:48px 60px;max-width:900px;overflow-y:auto}
+        .lesson-breadcrumb{font-size:13px;color:var(--text-tertiary);margin-bottom:24px;display:flex;align-items:center;gap:8px}
+        .lesson-breadcrumb span{color:var(--text-secondary)}
+        .lesson-title{font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:12px}
+        .lesson-desc{font-size:16px;color:var(--text-secondary);line-height:1.7;margin-bottom:40px}
+        .video-container{position:relative;width:100%;padding-bottom:56.25%;border-radius:var(--radius-lg);overflow:hidden;margin-bottom:40px;border:1px solid var(--glass-border);background:#000}
+        .video-container iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}
+        .lesson-text{line-height:1.8;font-size:16px;color:var(--text-secondary)}
+        .lesson-text h2{font-size:24px;font-weight:700;color:var(--text-primary);margin:36px 0 16px}
+        .lesson-text h3{font-size:20px;font-weight:700;color:var(--text-primary);margin:28px 0 12px}
+        .lesson-text p{margin-bottom:16px}
+        .lesson-text ul,.lesson-text ol{margin:16px 0;padding-left:24px}
+        .lesson-text li{margin-bottom:8px}
+        .lesson-text strong{color:var(--text-primary);font-weight:600}
+        .lesson-tip{background:rgba(0,163,163,.08);border-left:3px solid var(--mdef-turquoise);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:20px 24px;margin:24px 0;font-size:14px;line-height:1.7}
+        .lesson-tip-title{font-weight:700;color:var(--mdef-turquoise);margin-bottom:6px;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+        .lesson-nav{display:flex;justify-content:space-between;align-items:center;margin-top:60px;padding-top:32px;border-top:1px solid var(--glass-border);gap:16px}
+        .lesson-nav-btn{display:flex;align-items:center;gap:10px;padding:14px 28px;border-radius:100px;font-size:15px;font-weight:600;cursor:pointer;transition:var(--transition);border:none;font-family:inherit}
+        .lesson-nav-prev{background:var(--glass-bg);color:var(--text-secondary);border:1px solid var(--glass-border)}
+        .lesson-nav-prev:hover{background:var(--glass-hover);color:var(--text-primary)}
+        .lesson-nav-next{background:var(--gradient-main);color:#fff}
+        .lesson-nav-next:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,86,179,.4)}
+        .lesson-nav-complete{background:var(--gradient-accent);color:#fff}
+        .lesson-nav-complete:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,163,163,.4)}
+
+        /* ADMIN */
+        .admin-filters{display:flex;gap:12px;margin-bottom:32px;flex-wrap:wrap}
+        .admin-filter-btn{padding:10px 22px;border-radius:100px;font-size:14px;font-weight:600;cursor:pointer;transition:var(--transition);border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-secondary);font-family:inherit}
+        .admin-filter-btn:hover{border-color:rgba(0,163,163,.3);color:var(--text-primary)}
+        .admin-filter-btn.active{background:var(--gradient-main);border-color:transparent;color:#fff}
+        .admin-table-wrap{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--radius-lg);overflow:hidden}
+        .admin-table{width:100%;border-collapse:collapse}
+        .admin-table th{text-align:left;padding:16px 24px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-tertiary);border-bottom:1px solid var(--glass-border);background:rgba(255,255,255,.02)}
+        .admin-table td{padding:16px 24px;font-size:14px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-secondary)}
+        .admin-table tr:hover td{background:rgba(255,255,255,.02)}
+        .admin-table .user-name{font-weight:600;color:var(--text-primary)}
+        .admin-badge{display:inline-block;padding:4px 12px;border-radius:100px;font-size:12px;font-weight:600}
+        .admin-badge.senart{background:rgba(0,86,179,.15);color:#4d9fff}
+        .admin-badge.grigny{background:rgba(0,163,163,.15);color:#33c4c4}
+        .admin-badge.corbeil{background:rgba(0,168,107,.15);color:#33c48a}
+        .admin-badge.centre{background:rgba(255,107,53,.15);color:#ff8f65}
+        .progress-mini{width:80px;height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:8px}
+        .progress-mini-fill{height:100%;background:var(--gradient-accent);border-radius:100px}
+        .admin-export-btn{padding:10px 22px;border-radius:100px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--mdef-green);background:rgba(0,168,107,.1);color:var(--mdef-green);font-family:inherit;transition:var(--transition);margin-left:auto}
+        .admin-export-btn:hover{background:rgba(0,168,107,.2)}
+        .admin-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:32px;flex-wrap:wrap}
+        .admin-search{padding:10px 18px;border-radius:100px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:var(--text-primary);font-size:14px;font-family:inherit;outline:none;min-width:250px;transition:var(--transition)}
+        .admin-search:focus{border-color:var(--mdef-turquoise);box-shadow:0 0 0 4px rgba(0,163,163,.1)}
+
+        /* TOAST */
+        .toast{position:fixed;bottom:30px;right:30px;background:rgba(0,168,107,.95);color:#fff;padding:16px 28px;border-radius:var(--radius-md);font-weight:600;font-size:14px;z-index:10000;animation:fadeUp .4s ease;display:none;backdrop-filter:blur(10px);box-shadow:0 10px 40px rgba(0,0,0,.3)}
+        .toast.show{display:flex;align-items:center;gap:10px}
+
+        /* MODAL */
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:9999;display:none;align-items:center;justify-content:center}
+        .modal-overlay.show{display:flex}
+        .modal{background:var(--mdef-dark);border:1px solid var(--glass-border);border-radius:var(--radius-xl);padding:56px 48px;text-align:center;max-width:480px;width:90%;animation:scaleIn .5s cubic-bezier(.16,1,.3,1)}
+        .modal-icon{width:80px;height:80px;background:var(--gradient-accent);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:40px}
+        .modal h2{font-size:28px;font-weight:800;margin-bottom:12px}
+        .modal p{color:var(--text-secondary);margin-bottom:32px;line-height:1.6}
+
+        /* RESPONSIVE */
+        @media(max-width:900px){.lesson-layout{grid-template-columns:1fr}.lesson-sidebar{position:relative;top:0;height:auto;max-height:300px;border-right:none;border-bottom:1px solid var(--glass-border)}.lesson-content{padding:32px 20px}}
+        @media(max-width:768px){.navbar{padding:0 20px}.nav-links{display:none}.hero h1{font-size:32px}.dashboard{padding:32px 20px}.auth-card{padding:36px 24px}.admin-table-wrap{overflow-x:auto}.admin-table{min-width:600px}.lesson-nav{flex-direction:column}.lesson-nav-btn{width:100%;justify-content:center}}
+        ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:100px}
+    </style>
+</head>
+<body>
+    <div class="bg-mesh"><div class="bg-orb bg-orb-1"></div><div class="bg-orb bg-orb-2"></div></div>
+    <div class="bg-grid"></div>
+
+    <nav class="navbar">
+        <div class="nav-logo" onclick="navigate('landing')">
+            <div class="nav-logo-icon">M</div>
+            <div class="nav-logo-text"><span>MDEF</span> Learn</div>
+        </div>
+        <div class="nav-links" id="navLinks"></div>
+        <div class="nav-user" id="navUser">
+            <button class="nav-btn nav-btn-ghost" onclick="navigate('login')">Connexion</button>
+            <button class="nav-btn nav-btn-primary" onclick="navigate('register')">S'inscrire</button>
+        </div>
+    </nav>
+
+    <div class="main" id="app">
+        <!-- LANDING -->
+        <div class="page active" id="page-landing">
+            <div class="hero">
+                <div class="hero-badge animate-up"><span class="hero-badge-dot"></span>Plateforme MDEF Grand Paris Sud</div>
+                <h1 class="animate-up d1">Apprenez à votre<br><span class="gradient-text">rythme.</span></h1>
+                <p class="animate-up d2">Des modules interactifs pour développer vos compétences professionnelles. Vidéos, guides étape par étape et suivi personnalisé.</p>
+                <div class="hero-cta animate-up d3">
+                    <button class="btn btn-primary" onclick="navigate('register')">Commencer gratuitement →</button>
+                    <button class="btn btn-secondary" onclick="navigate('login')">J'ai déjà un compte</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="auth-page" id="page-login">
+            <div class="auth-card">
+                <h2 class="auth-title">Bon retour 👋</h2>
+                <p class="auth-subtitle">Connectez-vous pour reprendre votre apprentissage</p>
+                <div class="auth-error" id="loginError"></div>
+                <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="loginEmail" placeholder="votre@email.com"></div>
+                <div class="form-group"><label class="form-label">Mot de passe</label><input class="form-input" type="password" id="loginPassword" placeholder="••••••••"></div>
+                <button class="btn-auth" id="loginBtn" onclick="handleLogin()">Se connecter</button>
+                <p class="auth-switch">Pas encore de compte ? <a onclick="navigate('register')">S'inscrire</a></p>
+            </div>
+        </div>
+
+        <!-- REGISTER -->
+        <div class="auth-page" id="page-register">
+            <div class="auth-card">
+                <h2 class="auth-title">Créer un compte</h2>
+                <p class="auth-subtitle">Rejoignez la plateforme d'apprentissage MDEF GPS</p>
+                <div class="auth-error" id="regError"></div>
+                <div class="form-group"><label class="form-label">Prénom & Nom</label><input class="form-input" type="text" id="regName" placeholder="Jean Dupont"></div>
+                <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="regEmail" placeholder="votre@email.com"></div>
+                <div class="form-group"><label class="form-label">Mot de passe</label><input class="form-input" type="password" id="regPassword" placeholder="Min. 6 caractères"></div>
+                <div class="form-group"><label class="form-label">Mission Locale</label>
+                    <select class="form-select" id="regSite">
+                        <option value="">Sélectionnez votre mission locale</option>
+                    </select>
+                </div>
+                <button class="btn-auth" id="regBtn" onclick="handleRegister()">Créer mon compte</button>
+                <p class="auth-switch">Déjà inscrit ? <a onclick="navigate('login')">Se connecter</a></p>
+            </div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div class="page" id="page-dashboard">
+            <div class="dashboard">
+                <div class="dash-welcome animate-up"><h1>Bonjour, <span id="dashUserName">—</span> 👋</h1><p>Continuez votre apprentissage là où vous vous êtes arrêté.</p></div>
+                <div class="dash-stats">
+                    <div class="dash-stat animate-up d1"><div class="dash-stat-label">Modules terminés</div><div class="dash-stat-value turquoise" id="statCompleted">0/4</div></div>
+                    <div class="dash-stat animate-up d2"><div class="dash-stat-label">Leçons vues</div><div class="dash-stat-value blue" id="statLessons">0</div></div>
+                    <div class="dash-stat animate-up d3"><div class="dash-stat-label">Temps total</div><div class="dash-stat-value green" id="statTime">0min</div></div>
+                    <div class="dash-stat animate-up d4"><div class="dash-stat-label">Connexions</div><div class="dash-stat-value orange" id="statConnections">1</div></div>
+                </div>
+                <div class="section-header animate-up d2"><div class="section-label">Vos modules</div><div class="section-title">Continuez votre parcours</div></div>
+                <div class="modules-grid" id="modulesGrid"></div>
+            </div>
+        </div>
+
+        <!-- LESSON -->
+        <div class="page" id="page-lesson">
+            <div class="lesson-layout">
+                <aside class="lesson-sidebar">
+                    <div class="sidebar-header">
+                        <button class="sidebar-back" onclick="navigate('dashboard')">← Retour aux modules</button>
+                        <div class="sidebar-module-title" id="sidebarModuleTitle">—</div>
+                        <div class="sidebar-progress">
+                            <div class="sidebar-progress-bar"><div class="sidebar-progress-fill" id="sidebarProgressFill" style="width:0%"></div></div>
+                            <span class="sidebar-progress-text" id="sidebarProgressText">0%</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-lessons" id="sidebarLessons"></div>
+                </aside>
+                <main class="lesson-content" id="lessonContent"></main>
+            </div>
+        </div>
+
+        <!-- ADMIN -->
+        <div class="page" id="page-admin">
+            <div class="dashboard">
+                <div class="dash-welcome animate-up"><h1>Administration</h1><p>Suivi des apprenants par mission locale</p></div>
+                <div class="dash-stats" id="adminStats">
+                    <div class="dash-stat animate-up d1"><div class="dash-stat-label">Total inscrits</div><div class="dash-stat-value turquoise" id="adminTotal">0</div></div>
+                    <div class="dash-stat animate-up d2"><div class="dash-stat-label">Connectés aujourd'hui</div><div class="dash-stat-value blue" id="adminToday">0</div></div>
+                    <div class="dash-stat animate-up d3"><div class="dash-stat-label">Modules complétés</div><div class="dash-stat-value green" id="adminCompleted">0</div></div>
+                    <div class="dash-stat animate-up d4"><div class="dash-stat-label">Connexions totales</div><div class="dash-stat-value orange" id="adminConnections">0</div></div>
+                </div>
+                <div class="section-header animate-up d2" style="margin-bottom:24px"><div class="section-label">Apprenants</div><div class="section-title">Vue par mission locale</div></div>
+                <div class="admin-toolbar" id="adminToolbar"></div>
+                <div class="admin-table-wrap animate-up d3">
+                    <table class="admin-table"><thead><tr><th>Apprenant</th><th>Mission Locale</th><th>Progression</th><th>Temps total</th><th>Connexions</th><th>Dernière activité</th></tr></thead>
+                    <tbody id="adminTableBody"></tbody></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="modal-overlay" id="completionModal">
+        <div class="modal"><div class="modal-icon">🎉</div><h2>Module terminé !</h2><p id="completionText">Félicitations !</p><button class="btn btn-primary" onclick="closeModal();navigate('dashboard');">Retour au tableau de bord</button></div>
+    </div>
+
+<script>
+// ======================== API HELPER ========================
+async function api(url, method = 'GET', body = null) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    return data;
+}
+
+// ======================== STATE ========================
+let currentUser = null;
+let modulesData = [];
+let currentModule = null;
+let currentLessonIndex = 0;
+let adminFilter = 'all';
+
+// ======================== INIT ========================
+async function init() {
+    try {
+        const { user } = await api('/api/auth/me');
+        if (user) {
+            currentUser = user;
+            updateNavForUser();
+            navigate('dashboard');
+        }
+    } catch(e) {}
+    loadSites();
+}
+
+async function loadSites() {
+    try {
+        const { sites } = await api('/api/sites');
+        const select = document.getElementById('regSite');
+        sites.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            select.appendChild(opt);
+        });
+    } catch(e) {}
+}
+
+// ======================== AUTH ========================
+async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.classList.remove('show');
+    
+    try {
+        document.getElementById('loginBtn').disabled = true;
+        const { user } = await api('/api/auth/login', 'POST', { email, password });
+        currentUser = user;
+        updateNavForUser();
+        navigate('dashboard');
+        showToast('👋 Bienvenue, ' + user.name.split(' ')[0] + ' !');
+    } catch(e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+    } finally {
+        document.getElementById('loginBtn').disabled = false;
+    }
+}
+
+async function handleRegister() {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const site_id = document.getElementById('regSite').value;
+    const errEl = document.getElementById('regError');
+    errEl.classList.remove('show');
+
+    if (!name || !email || !password || !site_id) {
+        errEl.textContent = 'Veuillez remplir tous les champs';
+        errEl.classList.add('show');
+        return;
+    }
+
+    try {
+        document.getElementById('regBtn').disabled = true;
+        const { user } = await api('/api/auth/register', 'POST', { name, email, password, site_id });
+        currentUser = user;
+        updateNavForUser();
+        navigate('dashboard');
+        showToast('✅ Compte créé avec succès !');
+    } catch(e) {
+        errEl.textContent = e.message;
+        errEl.classList.add('show');
+    } finally {
+        document.getElementById('regBtn').disabled = false;
+    }
+}
+
+async function logout() {
+    try { await api('/api/auth/logout', 'POST'); } catch(e) {}
+    currentUser = null;
+    updateNavForLogout();
+    navigate('landing');
+    showToast('👋 À bientôt !');
+}
+
+// ======================== NAV ========================
+function navigate(page, data) {
+    document.querySelectorAll('.page,.auth-page').forEach(p => p.classList.remove('active'));
+    const el = document.getElementById('page-' + page);
+    if (el) el.classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const al = document.querySelector(`.nav-link[data-page="${page}"]`);
+    if (al) al.classList.add('active');
+
+    switch(page) {
+        case 'dashboard': renderDashboard(); break;
+        case 'lesson': openModule(data); break;
+        case 'admin': renderAdmin(); break;
+    }
+    window.scrollTo(0, 0);
+}
+
+function updateNavForUser() {
+    const links = document.getElementById('navLinks');
+    const user = document.getElementById('navUser');
+    
+    // Les learners ne voient PAS le lien Admin
+    let adminLink = '';
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
+        adminLink = `<button class="nav-link" data-page="admin" onclick="navigate('admin')">Admin</button>`;
+    }
+    
+    links.innerHTML = `
+        <button class="nav-link active" data-page="dashboard" onclick="navigate('dashboard')">Mes modules</button>
+        ${adminLink}
+    `;
+    const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    user.innerHTML = `<div class="nav-user-avatar" onclick="logout()" title="Se déconnecter">${initials}</div>`;
+}
+
+function updateNavForLogout() {
+    document.getElementById('navLinks').innerHTML = '';
+    document.getElementById('navUser').innerHTML = `
+        <button class="nav-btn nav-btn-ghost" onclick="navigate('login')">Connexion</button>
+        <button class="nav-btn nav-btn-primary" onclick="navigate('register')">S'inscrire</button>
+    `;
+}
+
+// ======================== DASHBOARD ========================
+async function renderDashboard() {
+    if (!currentUser) return navigate('login');
+    document.getElementById('dashUserName').textContent = currentUser.name.split(' ')[0];
+
+    try {
+        const [statsRes, modulesRes] = await Promise.all([
+            api('/api/stats'),
+            api('/api/modules')
+        ]);
+        modulesData = modulesRes.modules;
+
+        const s = statsRes;
+        document.getElementById('statCompleted').textContent = s.completed_modules + '/' + s.total_modules;
+        document.getElementById('statLessons').textContent = s.completed_lessons;
+        const t = s.total_time_minutes;
+        document.getElementById('statTime').textContent = t < 60 ? t + 'min' : Math.floor(t/60) + 'h' + (t%60 || '');
+        document.getElementById('statConnections').textContent = s.connections;
+
+        document.getElementById('modulesGrid').innerHTML = modulesData.map((m, i) => {
+            const pct = m.lessons_count > 0 ? Math.round((m.completed_count / m.lessons_count) * 100) : 0;
+            return `<div class="module-card animate-up d${i+1}" onclick="navigate('lesson','${m.id}')">
+                <div class="module-icon ${m.color}">${m.icon}</div>
+                <h3>${m.title}</h3><p>${m.description}</p>
+                <div class="module-meta"><span>${m.lessons_count} leçons</span><span>${m.completed_count}/${m.lessons_count} complétées</span></div>
+                <div class="module-progress-bar"><div class="module-progress-fill" style="width:${pct}%"></div></div>
+            </div>`;
+        }).join('');
+    } catch(e) { console.error(e); }
+}
+
+// ======================== LESSON ========================
+async function openModule(moduleId) {
+    if (!currentUser) return navigate('login');
+    if (!modulesData.length) {
+        const res = await api('/api/modules');
+        modulesData = res.modules;
+    }
+    currentModule = modulesData.find(m => m.id === moduleId);
+    if (!currentModule) return navigate('dashboard');
+
+    let startIndex = 0;
+    for (let i = 0; i < currentModule.lessons.length; i++) {
+        if (!currentModule.lessons[i].completed) { startIndex = i; break; }
+        if (i === currentModule.lessons.length - 1) startIndex = i;
+    }
+    currentLessonIndex = startIndex;
+    await renderLesson();
+}
+
+async function renderLesson() {
+    const mod = currentModule;
+    const lesson = mod.lessons[currentLessonIndex];
+    const pct = mod.lessons_count > 0 ? Math.round((mod.completed_count / mod.lessons_count) * 100) : 0;
+
+    // Fetch full lesson content
+    const { lesson: fullLesson } = await api('/api/lessons/' + lesson.id);
+
+    document.getElementById('sidebarModuleTitle').textContent = mod.title;
+    document.getElementById('sidebarProgressFill').style.width = pct + '%';
+    document.getElementById('sidebarProgressText').textContent = pct + '%';
+
+    document.getElementById('sidebarLessons').innerHTML = mod.lessons.map((l, i) => `
+        <button class="sidebar-lesson ${i === currentLessonIndex ? 'active' : ''} ${l.completed ? 'completed' : ''}" onclick="goToLesson(${i})">
+            <div class="lesson-step-num">${l.completed ? '✓' : (i + 1)}</div>
+            <div class="lesson-step-info"><h4>${l.title}</h4><span>${l.duration}</span></div>
+        </button>
+    `).join('');
+
+    const isLast = currentLessonIndex === mod.lessons.length - 1;
+    const isFirst = currentLessonIndex === 0;
+
+    document.getElementById('lessonContent').innerHTML = `
+        <div class="lesson-breadcrumb">${mod.icon} ${mod.title} <span>›</span> Étape ${currentLessonIndex + 1}/${mod.lessons.length}</div>
+        <h1 class="lesson-title">${fullLesson.title}</h1>
+        <p class="lesson-desc">Étape ${currentLessonIndex + 1} sur ${mod.lessons.length} — ${fullLesson.duration}</p>
+        <div class="video-container"><iframe src="https://www.youtube.com/embed/${fullLesson.video_url}?rel=0" allowfullscreen></iframe></div>
+        <div class="lesson-text">${fullLesson.content}</div>
+        <div class="lesson-nav">
+            ${!isFirst ? `<button class="lesson-nav-btn lesson-nav-prev" onclick="goToLesson(${currentLessonIndex - 1})">← Précédent</button>` : '<div></div>'}
+            ${isLast
+                ? `<button class="lesson-nav-btn lesson-nav-complete" onclick="completeLesson()">Terminer le module ✓</button>`
+                : `<button class="lesson-nav-btn lesson-nav-next" onclick="completeAndNext()">Suivant →</button>`
+            }
+        </div>
+    `;
+}
+
+async function goToLesson(index) {
+    currentLessonIndex = index;
+    await renderLesson();
+    document.querySelector('.lesson-content')?.scrollTo(0, 0);
+}
+
+async function completeAndNext() {
+    const lesson = currentModule.lessons[currentLessonIndex];
+    try {
+        await api('/api/lessons/' + lesson.id + '/complete', 'POST');
+        lesson.completed = true;
+        currentModule.completed_count++;
+        currentLessonIndex++;
+        await renderLesson();
+        document.querySelector('.lesson-content')?.scrollTo(0, 0);
+    } catch(e) { showToast('⚠️ Erreur: ' + e.message, '#FF6B35'); }
+}
+
+async function completeLesson() {
+    const lesson = currentModule.lessons[currentLessonIndex];
+    try {
+        await api('/api/lessons/' + lesson.id + '/complete', 'POST');
+        lesson.completed = true;
+        currentModule.completed_count++;
+        
+        const allDone = currentModule.lessons.every(l => l.completed);
+        if (allDone) {
+            document.getElementById('completionText').textContent = `Vous avez terminé le module "${currentModule.title}" avec succès !`;
+            document.getElementById('completionModal').classList.add('show');
+        } else {
+            await renderLesson();
+            showToast('✅ Leçon terminée !');
+        }
+    } catch(e) { showToast('⚠️ Erreur: ' + e.message, '#FF6B35'); }
+}
+
+function closeModal() { document.getElementById('completionModal').classList.remove('show'); }
+
+// ======================== ADMIN ========================
+async function renderAdmin() {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
+        showToast('⚠️ Accès réservé aux administrateurs', '#FF6B35');
+        return navigate('dashboard');
+    }
+
+    try {
+        const stats = await api('/api/admin/stats');
+        document.getElementById('adminTotal').textContent = stats.total_learners;
+        document.getElementById('adminToday').textContent = stats.today_active;
+        document.getElementById('adminCompleted').textContent = stats.total_modules_completed;
+        document.getElementById('adminConnections').textContent = stats.total_connections;
+
+        document.getElementById('adminToolbar').innerHTML = `
+            <button class="admin-filter-btn active" onclick="filterAdmin('all',this)">Tous (${stats.total_learners})</button>
+            ${stats.sites.map(s => `<button class="admin-filter-btn" onclick="filterAdmin('${s.id}',this)">${s.short_name} (${s.learners_count})</button>`).join('')}
+            <input class="admin-search" placeholder="🔍 Rechercher un apprenant..." oninput="searchAdmin(this.value)">
+            <button class="admin-export-btn" onclick="exportCSV()">📊 Exporter CSV</button>
+        `;
+
+        await loadAdminTable('all');
+    } catch(e) { console.error(e); showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+async function loadAdminTable(site, search = '') {
+    try {
+        let url = '/api/admin/learners?site=' + site;
+        if (search) url += '&search=' + encodeURIComponent(search);
+        const { learners } = await api(url);
+        const tbody = document.getElementById('adminTableBody');
+
+        if (!learners.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-tertiary)">Aucun apprenant</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = learners.map(l => {
+            const t = l.total_time;
+            const timeStr = t < 60 ? t + 'min' : Math.floor(t/60) + 'h' + (t%60 || '');
+            const lastActive = l.last_active ? new Date(l.last_active).toLocaleDateString('fr-FR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+            const badgeClass = l.site_id || '';
+            return `<tr>
+                <td class="user-name">${l.name}</td>
+                <td><span class="admin-badge ${badgeClass}">${l.site_name || '—'}</span></td>
+                <td><div class="progress-mini"><div class="progress-mini-fill" style="width:${l.progress_pct}%"></div></div>${l.progress_pct}%</td>
+                <td>${timeStr}</td>
+                <td>${l.connections}</td>
+                <td>${lastActive}</td>
+            </tr>`;
+        }).join('');
+    } catch(e) { console.error(e); }
+}
+
+function filterAdmin(site, btn) {
+    adminFilter = site;
+    document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    loadAdminTable(site);
+}
+
+let searchTimeout;
+function searchAdmin(val) {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadAdminTable(adminFilter, val), 300);
+}
+
+function exportCSV() {
+    window.open('/api/admin/export?site=' + adminFilter, '_blank');
+}
+
+// ======================== UTILS ========================
+function showToast(msg, color) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = color || 'rgba(0,168,107,.95)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ======================== START ========================
+init();
+</script>
+</body>
+</html>
