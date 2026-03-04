@@ -225,6 +225,48 @@
         @media(max-width:900px){.lesson-layout{grid-template-columns:1fr}.lesson-sidebar{position:relative;top:0;height:auto;max-height:300px;border-right:none;border-bottom:1px solid var(--glass-border)}.lesson-content{padding:32px 20px}}
         @media(max-width:768px){.navbar{padding:0 20px}.nav-links{display:none}.hero h1{font-size:32px}.dashboard{padding:32px 20px}.auth-card{padding:36px 24px}.admin-table-wrap{overflow-x:auto}.admin-table{min-width:600px}.lesson-nav{flex-direction:column}.lesson-nav-btn{width:100%;justify-content:center}}
         ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:100px}
+
+        /* VIDEO LOADER */
+        .video-wrapper{position:relative;width:100%;padding-bottom:56.25%;border-radius:var(--radius-lg);overflow:hidden;margin-bottom:40px;border:1px solid var(--glass-border);background:#000}
+        .video-wrapper iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;opacity:0;transition:opacity .4s}
+        .video-wrapper.loaded iframe{opacity:1}
+        .video-loader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--text-tertiary);font-size:13px;transition:opacity .3s}
+        .video-wrapper.loaded .video-loader{opacity:0;pointer-events:none}
+        .video-loader-spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--mdef-turquoise);border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        /* ADMIN TABLE SORTABLE */
+        .admin-table th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+        .admin-table th.sortable:hover{color:var(--text-secondary)}
+        .admin-table th.sortable::after{content:' ↕';opacity:.3;font-size:10px}
+        .admin-table th.sort-asc::after{content:' ↑';opacity:1;color:var(--mdef-turquoise)}
+        .admin-table th.sort-desc::after{content:' ↓';opacity:1;color:var(--mdef-turquoise)}
+        .admin-table tbody tr{cursor:pointer}
+        .admin-table tbody tr:hover td{background:rgba(0,163,163,.05)}
+
+        /* MODAL DÉTAIL APPRENANT */
+        .learner-detail-modules{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+        .learner-mod-card{background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:14px}
+        .learner-mod-title{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+        .learner-lesson-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+        .learner-lesson-row:last-child{border-bottom:none}
+        .learner-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+        .learner-stat{background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:14px;text-align:center}
+        .learner-stat-val{font-size:26px;font-weight:800}
+        .learner-stat-lbl{font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+
+        /* USER DROPDOWN */
+        .nav-user-wrapper{position:relative}
+        .user-dropdown{position:absolute;top:calc(100% + 14px);right:0;background:rgba(10,14,26,.97);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:8px;min-width:210px;backdrop-filter:blur(24px);z-index:2000;display:none;box-shadow:0 20px 60px rgba(0,0,0,.5);transform-origin:top right}
+        .user-dropdown.open{display:block;animation:scaleIn .18s cubic-bezier(.16,1,.3,1)}
+        .user-dropdown::before{content:'';position:absolute;top:-6px;right:14px;width:12px;height:12px;background:rgba(10,14,26,.97);border-left:1px solid var(--glass-border);border-top:1px solid var(--glass-border);transform:rotate(45deg)}
+        .user-dropdown-header{padding:10px 12px 8px}
+        .user-dropdown-name{font-size:14px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .user-dropdown-role{font-size:11px;color:var(--text-tertiary);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+        .user-dropdown-divider{height:1px;background:var(--glass-border);margin:4px 0}
+        .user-dropdown-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border-radius:var(--radius-sm);background:none;border:none;color:var(--text-secondary);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:var(--transition)}
+        .user-dropdown-item:hover{background:var(--glass-hover);color:var(--text-primary)}
+        .user-dropdown-item.logout:hover{background:rgba(255,107,53,.12);color:#ff8f65}
     </style>
 </head>
 <body>
@@ -266,6 +308,7 @@
                 <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="loginEmail" placeholder="votre@email.com"></div>
                 <div class="form-group"><label class="form-label">Mot de passe</label><input class="form-input" type="password" id="loginPassword" placeholder="••••••••"></div>
                 <button class="btn-auth" id="loginBtn" onclick="handleLogin()">Se connecter</button>
+                <p class="auth-switch" style="margin-bottom:12px">Mot de passe oublié ? <a onclick="openForgotPasswordModal()">Récupérer l'accès</a></p>
                 <p class="auth-switch">Pas encore de compte ? <a onclick="navigate('register')">S'inscrire</a></p>
             </div>
         </div>
@@ -343,8 +386,17 @@
                     <div class="section-header animate-up d2" style="margin-bottom:24px"><div class="section-label">Apprenants</div><div class="section-title">Vue par mission locale</div></div>
                     <div class="admin-toolbar" id="adminToolbar"></div>
                     <div class="admin-table-wrap animate-up d3">
-                        <table class="admin-table"><thead><tr><th>Apprenant</th><th>Mission Locale</th><th>Modules</th><th>Progression</th><th>Connexions</th><th>Dernière activité</th></tr></thead>
-                        <tbody id="adminTableBody"></tbody></table>
+                        <table class="admin-table" id="adminTable">
+                            <thead><tr>
+                                <th>Apprenant</th>
+                                <th>Mission Locale</th>
+                                <th class="sortable" onclick="sortAdminTable('modules',this)" title="Trier par modules">Modules</th>
+                                <th class="sortable" onclick="sortAdminTable('progress',this)" title="Trier par progression">Progression</th>
+                                <th class="sortable" onclick="sortAdminTable('connections',this)" title="Trier par connexions">Connexions</th>
+                                <th class="sortable" onclick="sortAdminTable('activity',this)" title="Trier par activité">Dernière activité</th>
+                            </tr></thead>
+                            <tbody id="adminTableBody"></tbody>
+                        </table>
                     </div>
                 </div>
                 <!-- Section Administrateurs (superadmin only) -->
@@ -384,7 +436,9 @@ async function init() {
         if (user) {
             currentUser = user;
             updateNavForUser();
-            navigate('dashboard');
+            // Les admins/superadmins vont directement sur leur tableau de bord
+            const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+            navigate(isAdmin ? 'admin' : 'dashboard');
         }
     } catch(e) {}
     loadSites();
@@ -415,7 +469,9 @@ async function handleLogin() {
         const { user } = await api('/api/auth/login', 'POST', { email, password });
         currentUser = user;
         updateNavForUser();
-        navigate('dashboard');
+        // Les admins/superadmins vont directement sur leur tableau de bord
+        const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+        navigate(isAdmin ? 'admin' : 'dashboard');
         showToast('👋 Bienvenue, ' + user.name.split(' ')[0] + ' !');
     } catch(e) {
         errEl.textContent = e.message;
@@ -482,20 +538,46 @@ function navigate(page, data) {
 function updateNavForUser() {
     const links = document.getElementById('navLinks');
     const user = document.getElementById('navUser');
-    
-    // Les learners ne voient PAS le lien Admin
-    let adminLink = '';
-    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
-        adminLink = `<button class="nav-link" data-page="admin" onclick="navigate('admin')">Admin</button>`;
-    }
-    
-    links.innerHTML = `
-        <button class="nav-link active" data-page="dashboard" onclick="navigate('dashboard')">Mes modules</button>
-        ${adminLink}
-    `;
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
     const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
-    user.innerHTML = `<div class="nav-user-avatar" onclick="logout()" title="Se déconnecter">${initials}</div>`;
+    const roleLabel = currentUser.role === 'superadmin' ? 'Super Admin' : currentUser.role === 'admin' ? 'Administrateur' : 'Apprenant';
+
+    // Les admins/superadmins n'ont accès qu'au tableau de bord admin, pas aux modules
+    if (isAdmin) {
+        links.innerHTML = `<button class="nav-link active" data-page="admin" onclick="navigate('admin')">Tableau de bord</button>`;
+    } else {
+        links.innerHTML = `<button class="nav-link active" data-page="dashboard" onclick="navigate('dashboard')">Mes modules</button>`;
+    }
+
+    // Avatar avec menu déroulant — plus de déconnexion directe au clic
+    user.innerHTML = `
+        <div class="nav-user-wrapper">
+            <div class="nav-user-avatar" onclick="toggleUserMenu(event)" title="${currentUser.name}" style="user-select:none">${initials}</div>
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-dropdown-header">
+                    <div class="user-dropdown-name">${currentUser.name}</div>
+                    <div class="user-dropdown-role">${roleLabel}</div>
+                </div>
+                <div class="user-dropdown-divider"></div>
+                <button class="user-dropdown-item logout" onclick="logout()">
+                    <span>🚪</span> Se déconnecter
+                </button>
+            </div>
+        </div>
+    `;
 }
+
+function toggleUserMenu(e) {
+    e.stopPropagation();
+    const dd = document.getElementById('userDropdown');
+    if (dd) dd.classList.toggle('open');
+}
+
+// Fermer le dropdown en cliquant ailleurs
+document.addEventListener('click', () => {
+    const dd = document.getElementById('userDropdown');
+    if (dd) dd.classList.remove('open');
+});
 
 function updateNavForLogout() {
     document.getElementById('navLinks').innerHTML = '';
@@ -580,7 +662,11 @@ async function renderLesson() {
         <div class="lesson-breadcrumb">${mod.icon} ${mod.title} <span>›</span> Étape ${currentLessonIndex + 1}/${mod.lessons.length}</div>
         <h1 class="lesson-title">${fullLesson.title}</h1>
         <p class="lesson-desc">Étape ${currentLessonIndex + 1} sur ${mod.lessons.length} — ${fullLesson.duration}</p>
-        <div class="video-container"><iframe src="https://www.youtube.com/embed/${fullLesson.video_url}?rel=0" allowfullscreen></iframe></div>
+        <div class="video-wrapper" id="videoWrapper">
+            <div class="video-loader"><div class="video-loader-spinner"></div><span>Chargement de la vidéo…</span></div>
+            <iframe src="https://www.youtube.com/embed/${esc(fullLesson.video_url)}?rel=0" allowfullscreen
+                onload="document.getElementById('videoWrapper')?.classList.add('loaded')"></iframe>
+        </div>
         <div class="lesson-text">${fullLesson.content}</div>
         <div class="lesson-nav">
             ${!isFirst ? `<button class="lesson-nav-btn lesson-nav-prev" onclick="goToLesson(${currentLessonIndex - 1})">← Précédent</button>` : '<div></div>'}
@@ -675,34 +761,67 @@ async function renderAdmin() {
     } catch(e) { console.error(e); showToast('⚠️ ' + e.message, '#FF6B35'); }
 }
 
+let _learnersCache = []; // cache pour le tri côté client
+
 async function loadAdminTable(site, search = '', module = 'all') {
     try {
         let url = '/api/admin/learners?site=' + site;
         if (search) url += '&search=' + encodeURIComponent(search);
         if (module && module !== 'all') url += '&module=' + encodeURIComponent(module);
         const { learners } = await api(url);
-        const tbody = document.getElementById('adminTableBody');
-
-        if (!learners.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-tertiary)">Aucun apprenant trouvé</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = learners.map(l => {
-            const lastActive = l.last_active
-                ? new Date(l.last_active).toLocaleDateString('fr-FR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
-                : '—';
-            const badgeClass = l.site_id || '';
-            return `<tr>
-                <td class="user-name">${l.name}<br><small style="font-size:11px;color:var(--text-tertiary);font-weight:400">${l.email}</small></td>
-                <td><span class="admin-badge ${badgeClass}">${l.site_name || '—'}</span></td>
-                <td>${l.modules_completed || 0}/${l.total_modules || 4}</td>
-                <td><div class="progress-mini"><div class="progress-mini-fill" style="width:${l.progress_pct}%"></div></div>${l.progress_pct}%</td>
-                <td>${l.connections}</td>
-                <td>${lastActive}</td>
-            </tr>`;
-        }).join('');
+        _learnersCache = learners;
+        renderAdminTableRows(learners);
     } catch(e) { console.error(e); }
+}
+
+function renderAdminTableRows(learners) {
+    const tbody = document.getElementById('adminTableBody');
+    if (!learners.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-tertiary)">Aucun apprenant trouvé</td></tr>';
+        return;
+    }
+    tbody.innerHTML = learners.map(l => {
+        const lastActive = l.last_active
+            ? new Date(l.last_active).toLocaleDateString('fr-FR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+            : '—';
+        const badgeClass = l.site_id || '';
+        // Escape pour prévenir XSS sur données utilisateur affichées en innerHTML
+        const safeName = esc(l.name);
+        const safeEmail = esc(l.email);
+        const safeSite = esc(l.site_name || '—');
+        return `<tr onclick="openLearnerDetail(${l.id})" title="Voir le détail">
+            <td class="user-name">${safeName}<br><small style="font-size:11px;color:var(--text-tertiary);font-weight:400">${safeEmail}</small></td>
+            <td><span class="admin-badge ${badgeClass}">${safeSite}</span></td>
+            <td>${l.modules_completed || 0}/${l.total_modules || 4}</td>
+            <td><div class="progress-mini"><div class="progress-mini-fill" style="width:${l.progress_pct}%"></div></div>${l.progress_pct}%</td>
+            <td>${l.connections}</td>
+            <td>${lastActive}</td>
+        </tr>`;
+    }).join('');
+}
+
+// Tri côté client sur les colonnes
+let _sortCol = null, _sortDir = 1;
+function sortAdminTable(col, thEl) {
+    if (_sortCol === col) _sortDir *= -1; else _sortDir = -1;
+    _sortCol = col;
+    // Reset visuel
+    document.querySelectorAll('.admin-table th.sortable').forEach(t => {
+        t.classList.remove('sort-asc', 'sort-desc');
+    });
+    thEl.classList.add(_sortDir === -1 ? 'sort-desc' : 'sort-asc');
+
+    const sorted = [..._learnersCache].sort((a, b) => {
+        let va, vb;
+        if (col === 'modules') { va = a.modules_completed || 0; vb = b.modules_completed || 0; }
+        else if (col === 'progress') { va = a.progress_pct || 0; vb = b.progress_pct || 0; }
+        else if (col === 'connections') { va = a.connections || 0; vb = b.connections || 0; }
+        else if (col === 'activity') { va = a.last_active || ''; vb = b.last_active || ''; }
+        if (va < vb) return _sortDir;
+        if (va > vb) return -_sortDir;
+        return 0;
+    });
+    renderAdminTableRows(sorted);
 }
 
 function filterAdmin(site, btn) {
@@ -944,6 +1063,127 @@ async function confirmResetPassword(id, password) {
         document.getElementById('resetPwdModal').remove();
         showToast('✅ Mot de passe réinitialisé');
     } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+// ======================== UTILS SÉCURITÉ ========================
+// Échappe le HTML pour éviter les injections XSS dans innerHTML
+function esc(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
+// ======================== DÉTAIL APPRENANT (admin) ========================
+async function openLearnerDetail(learnerId) {
+    const existing = document.getElementById('learnerDetailModal');
+    if (existing) existing.remove();
+
+    // Créer le modal avec un loader
+    const m = document.createElement('div');
+    m.id = 'learnerDetailModal';
+    m.className = 'modal-overlay show';
+    m.innerHTML = `<div class="modal" style="max-width:640px;text-align:left;padding:40px;overflow-y:auto;max-height:90vh">
+        <div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-tertiary)">
+            <div class="video-loader-spinner"></div>
+        </div>
+    </div>`;
+    m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+
+    try {
+        const { user, modules } = await api('/api/admin/learners/' + learnerId);
+        const totalLessons = modules.reduce((s, mo) => s + mo.lessons.length, 0);
+        const doneLessons  = modules.reduce((s, mo) => s + mo.lessons.filter(l => l.completed).length, 0);
+        const doneModules  = modules.filter(mo => mo.lessons.length > 0 && mo.lessons.every(l => l.completed)).length;
+        const pct = totalLessons > 0 ? Math.round(doneLessons / totalLessons * 100) : 0;
+        const lastActive = user.last_active
+            ? new Date(user.last_active).toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'})
+            : 'Jamais';
+
+        m.querySelector('.modal').innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+                <div>
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--mdef-turquoise);margin-bottom:6px">Détail apprenant</div>
+                    <h2 style="font-size:22px;font-weight:800;margin:0">${esc(user.name)}</h2>
+                    <div style="font-size:13px;color:var(--text-tertiary);margin-top:4px">${esc(user.email)}</div>
+                </div>
+                <button onclick="document.getElementById('learnerDetailModal').remove()" style="background:none;border:none;color:var(--text-tertiary);font-size:24px;cursor:pointer;line-height:1;padding:4px;flex-shrink:0">×</button>
+            </div>
+            <div class="learner-stat-grid">
+                <div class="learner-stat">
+                    <div class="learner-stat-val turquoise" style="color:var(--mdef-turquoise)">${doneModules}/${modules.length}</div>
+                    <div class="learner-stat-lbl">Modules terminés</div>
+                </div>
+                <div class="learner-stat">
+                    <div class="learner-stat-val blue" style="color:var(--mdef-blue-light)">${doneLessons}/${totalLessons}</div>
+                    <div class="learner-stat-lbl">Leçons</div>
+                </div>
+                <div class="learner-stat">
+                    <div class="learner-stat-val green" style="color:var(--mdef-green)">${pct}%</div>
+                    <div class="learner-stat-lbl">Progression</div>
+                </div>
+            </div>
+            <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Dernière activité : ${lastActive}</div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-bottom:10px">Progression par module</div>
+            <div class="learner-detail-modules">
+                ${modules.map(mo => {
+                    const modDone = mo.lessons.filter(l => l.completed).length;
+                    const allDone = mo.lessons.length > 0 && modDone === mo.lessons.length;
+                    return `<div class="learner-mod-card">
+                        <div class="learner-mod-title">
+                            <span>${allDone ? '✅' : '📂'}</span>
+                            <span>${esc(mo.title)}</span>
+                            <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--text-tertiary)">${modDone}/${mo.lessons.length}</span>
+                        </div>
+                        ${mo.lessons.map(l => `<div class="learner-lesson-row">
+                            <span>${l.completed ? '✓' : '○'}</span>
+                            <span style="flex:1">${esc(l.title)}</span>
+                        </div>`).join('')}
+                    </div>`;
+                }).join('')}
+            </div>
+        `;
+    } catch(e) {
+        m.querySelector('.modal').innerHTML = `<div style="text-align:center;padding:40px;color:#ff8f65">Erreur : ${esc(e.message)}</div>`;
+    }
+}
+
+// ======================== MOT DE PASSE OUBLIÉ ========================
+function openForgotPasswordModal() {
+    const existing = document.getElementById('forgotPwdModal');
+    if (existing) existing.remove();
+    const m = document.createElement('div');
+    m.id = 'forgotPwdModal';
+    m.className = 'modal-overlay show';
+    m.innerHTML = `
+        <div class="modal" style="max-width:460px">
+            <div class="modal-icon">🔑</div>
+            <h2>Mot de passe oublié ?</h2>
+            <p style="margin-bottom:20px">La récupération de mot de passe se fait via votre administrateur de Mission Locale.</p>
+            <div style="background:rgba(0,163,163,.07);border:1px solid rgba(0,163,163,.2);border-radius:var(--radius-md);padding:20px 24px;text-align:left;margin-bottom:28px">
+                <div style="font-size:13px;font-weight:700;color:var(--mdef-turquoise);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">📋 Marche à suivre</div>
+                <ol style="padding-left:18px;color:var(--text-secondary);font-size:14px;line-height:1.8;margin:0">
+                    <li>Contactez l'administrateur de votre Mission Locale</li>
+                    <li>Communiquez-lui votre adresse email</li>
+                    <li>Il réinitialisera votre mot de passe et vous donnera un nouveau</li>
+                    <li>Reconnectez-vous avec ce nouveau mot de passe</li>
+                </ol>
+            </div>
+            <div style="background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:24px;font-size:13px;color:var(--text-tertiary)">
+                <strong style="color:var(--text-secondary)">Admins :</strong> si vous êtes administrateur et avez perdu votre accès, contactez directement le superadmin MDEF GPS.
+            </div>
+            <button onclick="document.getElementById('forgotPwdModal').remove()" class="btn-auth" style="margin-top:0">Compris, je vais contacter mon admin</button>
+        </div>
+    `;
+    // Fermer en cliquant sur l'overlay
+    m.addEventListener('click', function(e) {
+        if (e.target === m) m.remove();
+    });
+    document.body.appendChild(m);
 }
 
 // ======================== UTILS ========================

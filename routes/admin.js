@@ -141,7 +141,7 @@ module.exports = function(db) {
                 params.push(module);
             }
 
-            query += ' ORDER BY u.last_active DESC NULLS LAST';
+            query += ' ORDER BY u.last_active IS NULL ASC, u.last_active DESC';
 
             const learners = db.prepare(query).all(...params);
 
@@ -305,10 +305,10 @@ module.exports = function(db) {
             const modulesMap = {};
             modulesRows.forEach(r => { modulesMap[r.user_id] = r.modules_completed; });
 
-            // Échappe un champ pour CSV (double les guillemets internes)
+            // Échappe un champ pour CSV (guillemets doublés + supprime retours à la ligne)
             function csvField(val) {
                 const str = (val === null || val === undefined) ? '' : String(val);
-                return '"' + str.replace(/"/g, '""') + '"';
+                return '"' + str.replace(/"/g, '""').replace(/[\r\n]+/g, ' ') + '"';
             }
 
             let csv = 'Nom,Email,Mission Locale,Date inscription,Dernière activité,Connexions,Temps (min),Leçons terminées,Modules terminés,Progression (%)\n';

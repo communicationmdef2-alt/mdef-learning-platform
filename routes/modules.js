@@ -12,8 +12,14 @@ module.exports = function(db) {
 
             const result = modules.map(m => {
                 const lessons = db.prepare('SELECT id, title, duration, sort_order FROM lessons WHERE module_id = ? ORDER BY sort_order').all(m.id);
+
+                // Guard : si le module n'a pas de leçons, évite le IN () invalide en SQL
+                if (lessons.length === 0) {
+                    return { ...m, lessons_count: 0, completed_count: 0, lessons: [] };
+                }
+
                 const progress = db.prepare(`
-                    SELECT lesson_id FROM user_progress 
+                    SELECT lesson_id FROM user_progress
                     WHERE user_id = ? AND lesson_id IN (${lessons.map(() => '?').join(',')}) AND completed = 1
                 `).all(userId, ...lessons.map(l => l.id));
 
