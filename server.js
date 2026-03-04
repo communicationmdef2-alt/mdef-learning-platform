@@ -77,7 +77,7 @@ async function start() {
 ╔══════════════════════════════════════════════╗
 ║  🎓 MDEF Learning Platform                  ║
 ║  ✅ Serveur démarré sur http://localhost:${PORT}  ║
-║  📊 Admin : admin@mdef-gps.fr / Admin2024!  ║
+║  📊 Admin : admin@mdef-gps.fr               ║
 ╚══════════════════════════════════════════════╝
         `);
     });

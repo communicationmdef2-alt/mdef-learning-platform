@@ -69,10 +69,11 @@ async function initDB() {
     // Admin par défaut
     const admin = get('SELECT id FROM users WHERE role = ?', ['superadmin']);
     if (!admin) {
-        const hash = bcrypt.hashSync('Admin2024!', 10);
+        const adminPassword = process.env.ADMIN_PASSWORD || 'Admin2024!';
+        const hash = bcrypt.hashSync(adminPassword, 10);
         _db.run('INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)',
             ['Administrateur MDEF','admin@mdef-gps.fr',hash,'superadmin']);
-        console.log('✅ Compte admin créé : admin@mdef-gps.fr / Admin2024!');
+        console.log('✅ Compte admin créé : admin@mdef-gps.fr (mot de passe défini via ADMIN_PASSWORD)');
     }
 
     save();
