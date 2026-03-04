@@ -49,9 +49,12 @@ module.exports = function(db) {
             req.session.siteId = site_id;
             req.session.sessionLogId = regLog.lastInsertRowid;
 
-            res.json({ 
-                success: true, 
-                user: { id: userId, name: name.trim(), email: email.toLowerCase().trim(), role: 'learner', site_id }
+            req.session.save(err => {
+                if (err) return res.status(500).json({ error: 'Erreur de session' });
+                res.json({
+                    success: true,
+                    user: { id: userId, name: name.trim(), email: email.toLowerCase().trim(), role: 'learner', site_id }
+                });
             });
         } catch(err) {
             console.error('Register error:', err);
@@ -87,15 +90,18 @@ module.exports = function(db) {
             req.session.siteId = user.site_id;
             req.session.sessionLogId = db.prepare('SELECT last_insert_rowid() as id').get().id;
 
-            res.json({ 
-                success: true, 
-                user: { 
-                    id: user.id, 
-                    name: user.name, 
-                    email: user.email, 
-                    role: user.role, 
-                    site_id: user.site_id 
-                }
+            req.session.save(err => {
+                if (err) return res.status(500).json({ error: 'Erreur de session' });
+                res.json({
+                    success: true,
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        site_id: user.site_id
+                    }
+                });
             });
         } catch(err) {
             console.error('Login error:', err);

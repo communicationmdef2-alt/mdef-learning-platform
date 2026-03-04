@@ -17,6 +17,9 @@ async function start() {
     // Sécurité HTTP headers (désactive CSP car inline scripts dans index.html)
     app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
+    // Faire confiance au proxy Railway/Heroku (nécessaire pour req.secure et les cookies sécurisés)
+    app.set('trust proxy', 1);
+
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
