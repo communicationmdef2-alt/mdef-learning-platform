@@ -241,12 +241,16 @@ module.exports = function(db) {
                 };
             });
 
-            // Sessions (20 dernières)
+            // Sessions (20 dernières) + temps total
             const sessions = db.prepare(
                 'SELECT * FROM sessions_log WHERE user_id = ? ORDER BY login_at DESC LIMIT 20'
             ).all(user.id);
 
-            res.json({ user, modules: moduleProgress, sessions });
+            const totalTime = db.prepare(
+                'SELECT COALESCE(SUM(duration_minutes), 0) as total FROM sessions_log WHERE user_id = ?'
+            ).get(user.id).total;
+
+            res.json({ user, modules: moduleProgress, sessions, total_time: totalTime });
         } catch(err) {
             console.error('Learner detail error:', err);
             res.status(500).json({ error: 'Erreur serveur' });

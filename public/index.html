@@ -393,6 +393,7 @@
                                 <th class="sortable" onclick="sortAdminTable('modules',this)" title="Trier par modules">Modules</th>
                                 <th class="sortable" onclick="sortAdminTable('progress',this)" title="Trier par progression">Progression</th>
                                 <th class="sortable" onclick="sortAdminTable('connections',this)" title="Trier par connexions">Connexions</th>
+                                <th class="sortable" onclick="sortAdminTable('time',this)" title="Trier par temps connecté">Temps</th>
                                 <th class="sortable" onclick="sortAdminTable('activity',this)" title="Trier par activité">Dernière activité</th>
                             </tr></thead>
                             <tbody id="adminTableBody"></tbody>
@@ -795,6 +796,7 @@ function renderAdminTableRows(learners) {
             <td>${l.modules_completed || 0}/${l.total_modules || 4}</td>
             <td><div class="progress-mini"><div class="progress-mini-fill" style="width:${l.progress_pct}%"></div></div>${l.progress_pct}%</td>
             <td>${l.connections}</td>
+            <td>${formatTime(l.total_time)}</td>
             <td>${lastActive}</td>
         </tr>`;
     }).join('');
@@ -816,6 +818,7 @@ function sortAdminTable(col, thEl) {
         if (col === 'modules') { va = a.modules_completed || 0; vb = b.modules_completed || 0; }
         else if (col === 'progress') { va = a.progress_pct || 0; vb = b.progress_pct || 0; }
         else if (col === 'connections') { va = a.connections || 0; vb = b.connections || 0; }
+        else if (col === 'time') { va = a.total_time || 0; vb = b.total_time || 0; }
         else if (col === 'activity') { va = a.last_active || ''; vb = b.last_active || ''; }
         if (va < vb) return _sortDir;
         if (va > vb) return -_sortDir;
@@ -1067,6 +1070,14 @@ async function confirmResetPassword(id, password) {
 
 // ======================== UTILS SÉCURITÉ ========================
 // Échappe le HTML pour éviter les injections XSS dans innerHTML
+function formatTime(minutes) {
+    if (!minutes || minutes === 0) return '—';
+    if (minutes < 60) return minutes + ' min';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? h + 'h ' + m + 'min' : h + 'h';
+}
+
 function esc(str) {
     if (str == null) return '';
     return String(str)
@@ -1095,7 +1106,7 @@ async function openLearnerDetail(learnerId) {
     document.body.appendChild(m);
 
     try {
-        const { user, modules } = await api('/api/admin/learners/' + learnerId);
+        const { user, modules, total_time } = await api('/api/admin/learners/' + learnerId);
         const totalLessons = modules.reduce((s, mo) => s + mo.lessons.length, 0);
         const doneLessons  = modules.reduce((s, mo) => s + mo.lessons.filter(l => l.completed).length, 0);
         const doneModules  = modules.filter(mo => mo.lessons.length > 0 && mo.lessons.every(l => l.completed)).length;
@@ -1125,6 +1136,10 @@ async function openLearnerDetail(learnerId) {
                 <div class="learner-stat">
                     <div class="learner-stat-val green" style="color:var(--mdef-green)">${pct}%</div>
                     <div class="learner-stat-lbl">Progression</div>
+                </div>
+                <div class="learner-stat">
+                    <div class="learner-stat-val orange" style="color:var(--mdef-orange)">${formatTime(total_time)}</div>
+                    <div class="learner-stat-lbl">Temps connecté</div>
                 </div>
             </div>
             <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">Dernière activité : ${lastActive}</div>
