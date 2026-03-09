@@ -556,6 +556,12 @@ async function logout() {
 
 // ======================== NAV ========================
 function navigate(page, data) {
+    // Si connecté et qu'on tente d'aller sur landing/login/register → rediriger vers le bon dashboard
+    if (currentUser && (page === 'landing' || page === 'login' || page === 'register')) {
+        const isAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
+        page = isAdmin ? 'admin' : 'dashboard';
+    }
+
     document.querySelectorAll('.page,.auth-page').forEach(p => p.classList.remove('active'));
     const el = document.getElementById('page-' + page);
     if (el) el.classList.add('active');
