@@ -248,8 +248,20 @@
         .modal h2{font-size:28px;font-weight:800;margin-bottom:12px}
         .modal p{color:var(--text-secondary);margin-bottom:32px;line-height:1.6}
 
+        /* SIDEBAR TOGGLE (caché sur desktop) */
+        .sidebar-toggle{display:none;align-items:center;justify-content:space-between;width:100%;margin-top:12px;padding:10px 16px;background:rgba(124,63,219,.12);border:1px solid var(--glass-border);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px;font-weight:600;cursor:pointer;transition:var(--transition);font-family:inherit}
+        .sidebar-toggle:hover{background:rgba(124,63,219,.22)}
+        .sidebar-toggle-arrow{transition:transform .25s ease}
+        .lesson-sidebar:not(.collapsed) .sidebar-toggle-arrow{transform:rotate(180deg)}
+
         /* RESPONSIVE */
-        @media(max-width:900px){.lesson-layout{grid-template-columns:1fr}.lesson-sidebar{position:relative;top:0;height:auto;max-height:300px;border-right:none;border-bottom:1px solid var(--glass-border)}.lesson-content{padding:32px 20px}}
+        @media(max-width:900px){
+            .lesson-layout{grid-template-columns:1fr;min-height:auto;height:auto}
+            .lesson-sidebar{position:relative;top:0;height:auto;border-right:none;border-bottom:1px solid var(--glass-border);padding:20px 0}
+            .lesson-sidebar .sidebar-toggle{display:flex}
+            .lesson-sidebar.collapsed .sidebar-lessons{display:none}
+            .lesson-content{padding:28px 20px;height:auto;overflow-y:visible;min-height:auto}
+        }
         @media(max-width:768px){.navbar{padding:0 20px}.nav-links{display:none}.hero h1{font-size:32px}.dashboard{padding:32px 20px}.auth-card{padding:36px 24px}.admin-table-wrap{overflow-x:auto}.admin-table{min-width:600px}.lesson-nav{flex-direction:column}.lesson-nav-btn{width:100%;justify-content:center}}
         ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(124,63,219,.2);border-radius:100px}::-webkit-scrollbar-thumb:hover{background:rgba(124,63,219,.4)}
 
@@ -386,6 +398,10 @@
                             <div class="sidebar-progress-bar"><div class="sidebar-progress-fill" id="sidebarProgressFill" style="width:0%"></div></div>
                             <span class="sidebar-progress-text" id="sidebarProgressText">0%</span>
                         </div>
+                        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                            <span>📋 Plan de cours</span>
+                            <span class="sidebar-toggle-arrow">▼</span>
+                        </button>
                     </div>
                     <div class="sidebar-lessons" id="sidebarLessons"></div>
                 </aside>
@@ -717,6 +733,13 @@ async function renderLesson() {
     document.getElementById('sidebarProgressFill').style.width = pct + '%';
     document.getElementById('sidebarProgressText').textContent = pct + '%';
 
+    // Sur mobile : sidebar collapsée par défaut → l'utilisateur voit le contenu directement
+    if (window.innerWidth <= 900) {
+        document.querySelector('.lesson-sidebar').classList.add('collapsed');
+    } else {
+        document.querySelector('.lesson-sidebar').classList.remove('collapsed');
+    }
+
     let sidebarHtml = '';
     let currentSection = null;
     let sectionNum = 0;
@@ -760,10 +783,19 @@ async function renderLesson() {
     `;
 }
 
+function toggleSidebar() {
+    const sidebar = document.querySelector('.lesson-sidebar');
+    sidebar.classList.toggle('collapsed');
+}
+
 async function goToLesson(index) {
     currentLessonIndex = index;
     await renderLesson();
     window.scrollTo(0, 0);
+    // Sur mobile : collapse la sidebar après avoir choisi une leçon
+    if (window.innerWidth <= 900) {
+        document.querySelector('.lesson-sidebar').classList.add('collapsed');
+    }
 }
 
 async function completeAndNext() {
