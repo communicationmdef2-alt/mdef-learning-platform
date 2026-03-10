@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Talent Studio — Plateforme d'Apprentissage</title>
-    <link rel="icon" type="image/png" href="images/5.png">
+    <link rel="icon" type="image/png" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-512.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#7c3fdb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Talent Studio">
     <style>
         /* FONTS */
         @font-face{font-family:'Galano';src:url('fonts/GalanoGrotesqueRegular.otf') format('opentype');font-weight:400;font-display:swap}
@@ -262,7 +269,7 @@
             .lesson-sidebar.collapsed .sidebar-lessons{display:none}
             .lesson-content{padding:28px 20px;height:auto;overflow-y:visible;min-height:auto}
         }
-        @media(max-width:768px){.navbar{padding:0 20px}.nav-links{display:none}.hero h1{font-size:32px}.dashboard{padding:32px 20px}.auth-card{padding:36px 24px}.admin-table-wrap{overflow-x:auto}.admin-table{min-width:600px}.lesson-nav{flex-direction:column}.lesson-nav-btn{width:100%;justify-content:center}}
+        @media(max-width:768px){.navbar{padding:0 16px;gap:8px}.nav-links{display:none}.nav-btn{padding:8px 14px;font-size:13px}.theme-toggle{width:32px;height:32px;font-size:15px;flex-shrink:0}.hero h1{font-size:32px}.dashboard{padding:32px 20px}.auth-card{padding:36px 24px}.admin-table-wrap{overflow-x:auto}.admin-table{min-width:600px}.lesson-nav{flex-direction:column}.lesson-nav-btn{width:100%;justify-content:center}}
         ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(124,63,219,.2);border-radius:100px}::-webkit-scrollbar-thumb:hover{background:rgba(124,63,219,.4)}
 
         /* VIDEO LOADER */
