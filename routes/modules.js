@@ -11,7 +11,7 @@ module.exports = function(db) {
             const userId = req.session.userId;
 
             const result = modules.map(m => {
-                const lessons = db.prepare('SELECT id, title, duration, sort_order FROM lessons WHERE module_id = ? ORDER BY sort_order').all(m.id);
+                const lessons = db.prepare('SELECT id, title, duration, sort_order, section_title FROM lessons WHERE module_id = ? ORDER BY sort_order').all(m.id);
 
                 // Guard : si le module n'a pas de leçons, évite le IN () invalide en SQL
                 if (lessons.length === 0) {
