@@ -1,53 +1,56 @@
-const initSqlJs = require('sql.js');
+const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'mdef.db');
-let _db = null;
 
 async function initDB() {
-    const SQL = await initSqlJs();
+    // Crée le dossier si besoin (ex: volume Railway /data)
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-    if (fs.existsSync(DB_PATH)) {
-        const buffer = fs.readFileSync(DB_PATH);
-        _db = new SQL.Database(buffer);
-        console.log('📂 Base chargée depuis', DB_PATH);
-    } else {
-        _db = new SQL.Database();
-        console.log('🆕 Nouvelle base de données créée');
-    }
+    const db = new Database(DB_PATH);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
 
-    _db.run('PRAGMA foreign_keys = ON');
-
-    // Tables
-    _db.run(`CREATE TABLE IF NOT EXISTS sites (id TEXT PRIMARY KEY, name TEXT NOT NULL, short_name TEXT NOT NULL)`);
-    _db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'learner' CHECK(role IN ('learner','admin','superadmin')), site_id TEXT REFERENCES sites(id), created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_active DATETIME, is_active INTEGER DEFAULT 1)`);
-    _db.run(`CREATE TABLE IF NOT EXISTS modules (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, icon TEXT, color TEXT, sort_order INTEGER DEFAULT 0)`);
-    _db.run(`CREATE TABLE IF NOT EXISTS lessons (id TEXT PRIMARY KEY, module_id TEXT NOT NULL REFERENCES modules(id), title TEXT NOT NULL, duration TEXT, video_url TEXT, content TEXT, section_title TEXT, sort_order INTEGER DEFAULT 0)`);
-    _db.run(`CREATE TABLE IF NOT EXISTS user_progress (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, lesson_id TEXT NOT NULL, completed INTEGER DEFAULT 0, completed_at DATETIME, video_watched_pct INTEGER DEFAULT 0, UNIQUE(user_id, lesson_id))`);
-    _db.run(`CREATE TABLE IF NOT EXISTS sessions_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, login_at DATETIME DEFAULT CURRENT_TIMESTAMP, logout_at DATETIME, duration_minutes INTEGER DEFAULT 0, ip_address TEXT, user_agent TEXT)`);
+    // ======================== TABLES ========================
+    db.exec(`CREATE TABLE IF NOT EXISTS sites (id TEXT PRIMARY KEY, name TEXT NOT NULL, short_name TEXT NOT NULL)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'learner' CHECK(role IN ('learner','admin','superadmin')), site_id TEXT REFERENCES sites(id), created_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_active DATETIME, is_active INTEGER DEFAULT 1)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS modules (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, icon TEXT, color TEXT, sort_order INTEGER DEFAULT 0)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS lessons (id TEXT PRIMARY KEY, module_id TEXT NOT NULL REFERENCES modules(id), title TEXT NOT NULL, duration TEXT, video_url TEXT, content TEXT, section_title TEXT, sort_order INTEGER DEFAULT 0)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS user_progress (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, lesson_id TEXT NOT NULL, completed INTEGER DEFAULT 0, completed_at DATETIME, video_watched_pct INTEGER DEFAULT 0, UNIQUE(user_id, lesson_id))`);
+    db.exec(`CREATE TABLE IF NOT EXISTS sessions_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, login_at DATETIME DEFAULT CURRENT_TIMESTAMP, logout_at DATETIME, duration_minutes INTEGER DEFAULT 0, ip_address TEXT, user_agent TEXT)`);
 
     // Migration : ajouter section_title aux anciennes BDs
-    try { _db.run('ALTER TABLE lessons ADD COLUMN section_title TEXT'); } catch(e) {}
+    try { db.exec('ALTER TABLE lessons ADD COLUMN section_title TEXT'); } catch(e) {}
 
-    // Index
-    _db.run('CREATE INDEX IF NOT EXISTS idx_users_site ON users(site_id)');
-    _db.run('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
-    _db.run('CREATE INDEX IF NOT EXISTS idx_progress_user ON user_progress(user_id)');
-    _db.run('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions_log(user_id)');
+    // ======================== INDEX ========================
+    db.exec('CREATE INDEX IF NOT EXISTS idx_users_site ON users(site_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_progress_user ON user_progress(user_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions_log(user_id)');
 
-    // Sites
-    [['senart','Mission Locale de Sénart','Sénart'],['grigny','Mission Locale de Grigny','Grigny'],['corbeil','Mission Locale de Corbeil-Essonnes','Corbeil-Essonnes'],['centre','Mission Locale Centre-Essonne','Centre-Essonne']].forEach(([id,name,short]) => {
-        _db.run('INSERT OR IGNORE INTO sites (id,name,short_name) VALUES (?,?,?)', [id,name,short]);
-    });
+    // ======================== SITES ========================
+    const insertSite = db.prepare('INSERT OR IGNORE INTO sites (id,name,short_name) VALUES (?,?,?)');
+    [
+        ['senart','Mission Locale de Sénart','Sénart'],
+        ['grigny','Mission Locale de Grigny','Grigny'],
+        ['corbeil','Mission Locale de Corbeil-Essonnes','Corbeil-Essonnes'],
+        ['centre','Mission Locale Centre-Essonne','Centre-Essonne']
+    ].forEach(([id,name,short]) => insertSite.run(id, name, short));
 
-    // Modules
-    [['cv','Créer son CV',"Apprenez à rédiger un CV professionnel et percutant.",'📄','blue',1],['lettre','Lettre de motivation',"Rédigez des lettres de motivation convaincantes.",'✉️','turquoise',2],['entretien','Réussir son entretien',"Préparez-vous efficacement aux entretiens.",'🎯','green',3],['numerique','Outils numériques',"Maîtrisez les outils numériques essentiels.",'💻','orange',4]].forEach(([id,t,d,i,c,o]) => {
-        _db.run('INSERT OR IGNORE INTO modules (id,title,description,icon,color,sort_order) VALUES (?,?,?,?,?,?)', [id,t,d,i,c,o]);
-    });
+    // ======================== MODULES ========================
+    const insertModule = db.prepare('INSERT OR IGNORE INTO modules (id,title,description,icon,color,sort_order) VALUES (?,?,?,?,?,?)');
+    [
+        ['cv','Créer son CV',"Apprenez à rédiger un CV professionnel et percutant.",'📄','blue',1],
+        ['lettre','Lettre de motivation',"Rédigez des lettres de motivation convaincantes.",'✉️','turquoise',2],
+        ['entretien','Réussir son entretien',"Préparez-vous efficacement aux entretiens.",'🎯','green',3],
+        ['numerique','Outils numériques',"Maîtrisez les outils numériques essentiels.",'💻','orange',4]
+    ].forEach(([id,t,d,i,c,o]) => insertModule.run(id,t,d,i,c,o));
 
-    // Leçons — autres modules (inchangées)
+    // ======================== LEÇONS — autres modules ========================
+    const insertLesson = db.prepare('INSERT OR IGNORE INTO lessons (id,module_id,title,duration,video_url,content,sort_order) VALUES (?,?,?,?,?,?,?)');
     const L = [
         ['lm-1','lettre','Structure d\'une lettre','7 min','dQw4w9WgXcQ',`<h2>Structure en 3 parties</h2><p><strong>Vous → Moi → Nous</strong>.</p><div class="lesson-tip"><div class="lesson-tip-title">💡 Astuce</div>Montrez que vous connaissez l'entreprise.</div>`,1],
         ['lm-2','lettre','Personnaliser sa lettre','9 min','dQw4w9WgXcQ',`<h2>Adapter à chaque offre</h2><p>Reprenez les <strong>mots-clés de l'annonce</strong>.</p><div class="lesson-tip"><div class="lesson-tip-title">⚠️ Erreur fréquente</div>Ne répétez pas votre CV !</div>`,2],
@@ -60,16 +63,15 @@ async function initDB() {
         ['num-3','numerique','LinkedIn & réseaux pro','8 min','dQw4w9WgXcQ',`<h2>LinkedIn</h2><p>Profil <strong>complet et actif</strong> = plus de chances.</p><div class="lesson-tip"><div class="lesson-tip-title">💡</div>80% des recruteurs utilisent LinkedIn.</div>`,3],
         ['num-4','numerique','Postuler en ligne','7 min','dQw4w9WgXcQ',`<h2>Plateformes d'emploi</h2><p>Indeed, HelloWork, Welcome to the Jungle...</p><div class="lesson-tip"><div class="lesson-tip-title">✅</div>Créez un tableau de suivi !</div>`,4],
     ];
-    L.forEach(([id,mod,title,dur,vid,content,order]) => {
-        _db.run('INSERT OR IGNORE INTO lessons (id,module_id,title,duration,video_url,content,sort_order) VALUES (?,?,?,?,?,?,?)', [id,mod,title,dur,vid,content,order]);
-    });
+    L.forEach(([id,mod,title,dur,vid,content,order]) => insertLesson.run(id,mod,title,dur,vid,content,order));
 
-    // Leçons CV — structure en 4 parties (INSERT OR REPLACE pour mettre à jour le contenu)
+    // ======================== LEÇONS CV ========================
     const P1 = 'Partie 1 - Les astuces et règles à respecter pour réaliser ton meilleur CV';
     const P2 = 'Partie 2 - Le format de ton CV';
     const P3 = 'Partie 3 - Le contenu de ton CV';
     const P4 = 'Partie 4 - Les formats spécifiques';
 
+    const insertCV = db.prepare('INSERT OR REPLACE INTO lessons (id,module_id,title,duration,video_url,content,section_title,sort_order) VALUES (?,?,?,?,?,?,?,?)');
     const CV = [
         ['cv-1', 'Objectif d\'un CV', '8 min', 's6_l-ILjJsM',
             `<p>Contenu bientôt disponible.</p>`,
@@ -78,7 +80,7 @@ async function initDB() {
             `<h2>Les 5 modèles de CV</h2><p>Découvre les 5 modèles de CV retravaillés pour t'aider dans ta recherche d'emploi !</p><div class="lesson-tip"><div class="lesson-tip-title">📎 Ressource</div>Retrouve nos 5 modèles en suivant le lien suivant : <a href="https://www.canva.com/design/DAFeZRuFqz8/tHnBWw6eAjKHCozcyjkxQA/edit" target="_blank" style="color:var(--ts-teal);font-weight:600">Canva</a></div><p>Pour les utiliser, connectes-toi à Canva, puis :</p><ol><li>Clique sur <strong>"Fichier"</strong></li><li>Puis sur <strong>"Dupliquer"</strong></li><li>Choisi ensuite ton modèle et commence à le modifier !</li></ol>`,
             P2, 2],
         ['cv-3', 'Le design de ton CV', '12 min', 'kfdrkn8iiJw',
-            `<h2>La charte graphique</h2><p>Si tu te souviens bien, je t'ai dit que tu pouvais utiliser des couleurs en fonction de ce qu'elles représentent dans le milieu du marketing.</p><p>En marketing, les couleurs sont associées à des qualités. Si tu prends le rouge par exemple, celle-ci est associée à l'amour, la chaleur, la passion, l'interdiction et le danger. Tu trouveras d'autres qualités / associations aux couleurs, selon la source. Puis ces listes ne sont pas exhaustives.</p><img src="/images/design ton cv1.png" class="lesson-img" alt="Charte graphique des couleurs"><h2>Les aides à la création</h2><h3>Insérer un lien cliquable sur PDF</h3><p>Si après avoir téléchargé un fichier en PDF (comme ton CV), tu souhaites lui ajouter des liens cliquables vers tes réseaux ou autre, tu peux suivre la démarche suivante :</p><ol><li>Rends-toi sur <strong>Sejda.com</strong> ;</li><li>Clique sur <em>Edit a PDF document</em> ;</li><li>Clique ensuite sur <em>Télécharger fichier PDF</em> ;</li><li>Sélectionne le PDF en question qui se trouve sur ton PC ;</li><li>Clique sur <em>Ouvrir</em> pour l'importer ;</li><li>Choisis <em>Links</em> ;</li><li>Trace la zone de texte cliquable où ton lien apparaîtra ;</li><li>Lorsque tu relâches le clic, une fenêtre s'ouvre ;</li><li>Dans <em>Link to external URL</em>, colle le lien de ton réseau ou autre (Ctrl+V) que tu as copié (Ctrl+C) au préalable ;</li><li>Ferme la fenêtre à l'aide de la petite croix en haut à droite. Les modifications sont automatiquement enregistrées ;</li><li>Clique sur <em>Appliquer les changements</em> ;</li><li>Télécharge (= Download), Partage (= Share), ou Imprime (= Print) ton fichier !</li></ol><img src="/images/design ton cv2.png" class="lesson-img" alt="Sejda - Insérer un lien cliquable sur PDF"><h3>Récupérer une couleur</h3><p>T'as repéré une couleur et tu veux son code exact ? Il existe une extension Chrome : <strong>ColorZilla</strong>.</p><p>Pour pouvoir l'utiliser :</p><ol><li>Rends-toi sur Google ;</li><li>Tape <em>ColorZilla</em> dans la barre de recherche ;</li><li>Clique sur le premier lien qui s'affiche ;</li><li>Clique ensuite sur <em>Ajouter à Chrome</em> ;</li><li>L'extension apparaît dans Extensions, en haut à droite ;</li><li>Épingle-la pour y avoir accès facilement.</li></ol><img src="/images/design ton cv3.png" class="lesson-img" alt="ColorZilla dans Chrome Extensions"><p>Tu n'as plus qu'à :</p><ol><li>Te rendre sur la page où tu souhaites récupérer la couleur ;</li><li>Clique sur la pipette ;</li><li>Choisis <em>Pick Color From Page</em> ;</li><li>Sélectionne par un clic gauche la couleur qui te plaît ;</li><li>Re-clique sur la pipette ;</li></ol><img src="/images/design ton cv4.png" class="lesson-img" alt="Menu ColorZilla - Pick Color From Page"><ol start="6"><li>Sélectionne <em>Color Picker</em> ;</li><li>Et tu obtiens le code couleur !</li></ol><img src="/images/design ton cv5.png" class="lesson-img" alt="ColorZilla - Color Picker avec code couleur"><h3>Compresser ton fichier</h3><p>En général, quand tu dois déposer ton fichier sur une plateforme quelle qu'elle soit, celui-ci ne doit pas dépasser une taille maximale. Si ton fichier est trop lourd, il existe des outils en ligne :</p><ul><li><strong>ILovePDF</strong> : compresser un PDF ;</li><li><strong>Compress PNG</strong> : compresser un PNG ;</li><li><strong>Online converter</strong> : compresser tous types de fichier.</li></ul><img src="/images/design ton cv6.png" class="lesson-img" alt="Compresser ton fichier"><h3>Compresser ton fichier</h3><p>En général, quand tu dois déposer ton fichier sur une plateforme quelle qu'elle soit, celui-ci ne doit pas dépasser une taille maximale. Si ton fichier est trop lourd, il existe des outils en ligne :</p><ul><li><strong>ILovePDF</strong> : compresser un PDF ;</li><li><strong>Compress PNG</strong> : compresser un PNG ;</li><li><strong>Online converter</strong> : compresser tous types de fichier.</li></ul>`,
+            `<h2>La charte graphique</h2><p>Si tu te souviens bien, je t'ai dit que tu pouvais utiliser des couleurs en fonction de ce qu'elles représentent dans le milieu du marketing.</p><p>En marketing, les couleurs sont associées à des qualités. Si tu prends le rouge par exemple, celle-ci est associée à l'amour, la chaleur, la passion, l'interdiction et le danger. Tu trouveras d'autres qualités / associations aux couleurs, selon la source. Puis ces listes ne sont pas exhaustives.</p><img src="/images/design ton cv1.png" class="lesson-img" alt="Charte graphique des couleurs"><h2>Les aides à la création</h2><h3>Insérer un lien cliquable sur PDF</h3><p>Si après avoir téléchargé un fichier en PDF (comme ton CV), tu souhaites lui ajouter des liens cliquables vers tes réseaux ou autre, tu peux suivre la démarche suivante :</p><ol><li>Rends-toi sur <strong>Sejda.com</strong> ;</li><li>Clique sur <em>Edit a PDF document</em> ;</li><li>Clique ensuite sur <em>Télécharger fichier PDF</em> ;</li><li>Sélectionne le PDF en question qui se trouve sur ton PC ;</li><li>Clique sur <em>Ouvrir</em> pour l'importer ;</li><li>Choisis <em>Links</em> ;</li><li>Trace la zone de texte cliquable où ton lien apparaîtra ;</li><li>Lorsque tu relâches le clic, une fenêtre s'ouvre ;</li><li>Dans <em>Link to external URL</em>, colle le lien de ton réseau ou autre (Ctrl+V) que tu as copié (Ctrl+C) au préalable ;</li><li>Ferme la fenêtre à l'aide de la petite croix en haut à droite. Les modifications sont automatiquement enregistrées ;</li><li>Clique sur <em>Appliquer les changements</em> ;</li><li>Télécharge (= Download), Partage (= Share), ou Imprime (= Print) ton fichier !</li></ol><img src="/images/design ton cv2.png" class="lesson-img" alt="Sejda - Insérer un lien cliquable sur PDF"><h3>Récupérer une couleur</h3><p>T'as repéré une couleur et tu veux son code exact ? Il existe une extension Chrome : <strong>ColorZilla</strong>.</p><p>Pour pouvoir l'utiliser :</p><ol><li>Rends-toi sur Google ;</li><li>Tape <em>ColorZilla</em> dans la barre de recherche ;</li><li>Clique sur le premier lien qui s'affiche ;</li><li>Clique ensuite sur <em>Ajouter à Chrome</em> ;</li><li>L'extension apparaît dans Extensions, en haut à droite ;</li><li>Épingle-la pour y avoir accès facilement.</li></ol><img src="/images/design ton cv3.png" class="lesson-img" alt="ColorZilla dans Chrome Extensions"><p>Tu n'as plus qu'à :</p><ol><li>Te rendre sur la page où tu souhaites récupérer la couleur ;</li><li>Clique sur la pipette ;</li><li>Choisis <em>Pick Color From Page</em> ;</li><li>Sélectionne par un clic gauche la couleur qui te plaît ;</li><li>Re-clique sur la pipette ;</li></ol><img src="/images/design ton cv4.png" class="lesson-img" alt="Menu ColorZilla - Pick Color From Page"><ol start="6"><li>Sélectionne <em>Color Picker</em> ;</li><li>Et tu obtiens le code couleur !</li></ol><img src="/images/design ton cv5.png" class="lesson-img" alt="ColorZilla - Color Picker avec code couleur"><h3>Compresser ton fichier</h3><p>En général, quand tu dois déposer ton fichier sur une plateforme quelle qu'elle soit, celui-ci ne doit pas dépasser une taille maximale. Si ton fichier est trop lourd, il existe des outils en ligne :</p><ul><li><strong>ILovePDF</strong> : compresser un PDF ;</li><li><strong>Compress PNG</strong> : compresser un PNG ;</li><li><strong>Online converter</strong> : compresser tous types de fichier.</li></ul><img src="/images/design ton cv6.png" class="lesson-img" alt="Compresser ton fichier">`,
             P2, 3],
         ['cv-4', 'Réalise une photo professionnelle', '15 min', 'FGJzarKZHTs',
             `<h2>Les bases d'une bonne photo professionnelle</h2><p>Pour te récapituler, une bonne photo professionnelle doit être :</p><ul><li>Bien éclairée ;</li><li>Cadrée jusqu'à tes hanches ;</li><li>Sur un fond uni de préférence (sinon tu peux retirer l'arrière-plan grâce à Canva).</li></ul><p>Et en ce qui te concerne :</p><ul><li>Habille-toi en fonction du poste pour lequel tu postules ;</li><li>Tiens toi droit ;</li><li>Détends tes épaules ;</li><li>Plisse un peu les yeux ;</li><li>Fais ton plus beau sourire, sans en faire trop ;</li><li>Et prends la photo !</li></ul><div class="lesson-tip"><div class="lesson-tip-title">📊 Source</div>Les informations ci-dessous sont tirées d'une étude réalisée par <strong>Photofeeler</strong>, qui attribue des points de -5 à +5 pour 3 critères : Compétent, Influent, Sympathique.</div><h2>Les critères d'évaluation</h2><h3>Tes yeux</h3><p>Si tu portes des lunettes ou tout autre accessoire qui obstrue tes yeux, tu obtiens -0,36 en sympathie. Laisse tes yeux visibles !</p><p>Les <strong>yeux plissés</strong> : +0,22 en sympathie, +0,33 en compétence, +0,37 sur l'influence.</p><h3>Ton visage</h3><p>Si une ligne d'ombre dessine ta mâchoire : +0,18 en sympathie, +0,24 en compétence, +0,18 sur l'influence.</p><h3>Ton sourire</h3><p>Un grand sourire avec dents visibles : +1,35 en sympathie, +0,33 en compétence, +0,22 sur l'influence.</p><div class="lesson-tip"><div class="lesson-tip-title">⚠️ Attention</div>L'excès n'est pas bon ! Si tu souris au point d'en rire, ton score en sympathie monte à +1,49 mais tes deux autres scores diminuent.</div><h3>Style vestimentaire</h3><p>Une tenue formelle : +0,94 en compétence, +1,29 sur l'influence. Les t-shirts, jeans et couleurs vives sont qualifiés d'informels.</p><div class="lesson-tip"><div class="lesson-tip-title">💡 Conseil</div>Applique ces conseils pour ta photo LinkedIn, mais tu peux adapter la photo sur ton CV en fonction du poste que tu vises.</div><h3>Cadrage</h3><p>Deux choix : tête aux épaules, ou tête à la taille. Évite les gros plans (-0,21 en sympathie) et les photos en pied (-0,29 pour ta compétence et ton influence).</p><h3>L'édition</h3><p>Retouchez avec modération ! Une photo trop sombre : -0,38 en sympathie. Les photos en noir et blanc n'ont aucun impact statistique.</p><h2>Conclusion</h2><p>La photo parfaite n'existe pas. Privilégie certains critères selon le poste que tu vises :</p><ul><li><strong>Assistant(e) social(e)</strong> → Sympathique + Compétent ;</li><li><strong>Hôtellerie</strong> → Sympathique ;</li><li><strong>Avocat</strong> → Compétent ;</li><li><strong>Commerce / Négociation</strong> → Influence.</li></ul>`,
@@ -103,68 +105,22 @@ async function initDB() {
             P4, 10],
     ];
     CV.forEach(([id, title, dur, vid, content, section, order]) => {
-        _db.run('INSERT OR REPLACE INTO lessons (id,module_id,title,duration,video_url,content,section_title,sort_order) VALUES (?,?,?,?,?,?,?,?)', [id, 'cv', title, dur, vid, content, section, order]);
+        insertCV.run(id, 'cv', title, dur, vid, content, section, order);
     });
 
-    // Admin par défaut
-    const admin = get('SELECT id FROM users WHERE role = ?', ['superadmin']);
+    // ======================== ADMIN PAR DÉFAUT ========================
+    const admin = db.prepare('SELECT id FROM users WHERE role = ?').get('superadmin');
     if (!admin) {
         const adminPassword = process.env.ADMIN_PASSWORD || 'Admin2024!';
         const hash = bcrypt.hashSync(adminPassword, 10);
-        _db.run('INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)',
-            ['Administrateur MDEF','admin@mdef-gps.fr',hash,'superadmin']);
+        db.prepare('INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)').run(
+            'Administrateur MDEF', 'admin@mdef-gps.fr', hash, 'superadmin'
+        );
         console.log('✅ Compte admin créé : admin@mdef-gps.fr (mot de passe défini via ADMIN_PASSWORD)');
     }
 
-    save();
-    return wrap();
-}
-
-function save() {
-    if (_db) {
-        const data = _db.export();
-        fs.writeFileSync(DB_PATH, Buffer.from(data));
-    }
-}
-
-setInterval(save, 30000);
-process.on('exit', save);
-process.on('SIGINT', () => { save(); process.exit(); });
-process.on('SIGTERM', () => { save(); process.exit(); });
-
-function get(sql, params = []) {
-    const stmt = _db.prepare(sql);
-    if (params.length) stmt.bind(params);
-    if (stmt.step()) { const r = stmt.getAsObject(); stmt.free(); return r; }
-    stmt.free();
-    return null;
-}
-
-function all(sql, params = []) {
-    const stmt = _db.prepare(sql);
-    if (params.length) stmt.bind(params);
-    const rows = [];
-    while (stmt.step()) rows.push(stmt.getAsObject());
-    stmt.free();
-    return rows;
-}
-
-function run(sql, params = []) {
-    _db.run(sql, params);
-    const r = get('SELECT last_insert_rowid() as id', []);
-    const changes = _db.getRowsModified();
-    save();
-    return { lastInsertRowid: r ? r.id : 0, changes };
-}
-
-function wrap() {
-    return {
-        prepare: (sql) => ({
-            get: (...args) => get(sql, args.flat()),
-            all: (...args) => all(sql, args.flat()),
-            run: (...args) => run(sql, args.flat()),
-        }),
-    };
+    console.log(`📂 Base de données : ${DB_PATH}`);
+    return db;
 }
 
 module.exports = { initDB, DB_PATH };
