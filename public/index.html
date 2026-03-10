@@ -272,13 +272,16 @@
         @media(max-width:768px){.navbar{padding:0 16px;gap:8px}.nav-links{display:none}.nav-btn{padding:8px 14px;font-size:13px}.theme-toggle{width:32px;height:32px;font-size:15px;flex-shrink:0}.hero h1{font-size:32px}.dashboard{padding:32px 20px}.auth-card{padding:36px 24px}.admin-table-wrap{overflow-x:auto}.admin-table{min-width:600px}.lesson-nav{flex-direction:column}.lesson-nav-btn{width:100%;justify-content:center}}
         ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(124,63,219,.2);border-radius:100px}::-webkit-scrollbar-thumb:hover{background:rgba(124,63,219,.4)}
 
-        /* VIDEO LOADER */
-        .video-wrapper{position:relative;width:100%;padding-bottom:56.25%;border-radius:var(--radius-lg);overflow:hidden;margin-bottom:40px;border:1px solid var(--glass-border);background:#000}
-        .video-wrapper iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;opacity:0;transition:opacity .4s}
-        .video-wrapper.loaded iframe{opacity:1}
-        .video-loader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--text-tertiary);font-size:13px;transition:opacity .3s}
-        .video-wrapper.loaded .video-loader{opacity:0;pointer-events:none}
-        .video-loader-spinner{width:32px;height:32px;border:3px solid rgba(124,63,219,.15);border-top-color:var(--ts-purple);border-radius:50%;animation:spin .8s linear infinite}
+        /* VIDEO THUMBNAIL */
+        .video-thumb{position:relative;width:100%;padding-bottom:56.25%;border-radius:var(--radius-lg);overflow:hidden;margin-bottom:40px;cursor:pointer;display:block;text-decoration:none}
+        .video-thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .3s ease}
+        .video-thumb:hover .video-thumb-img{transform:scale(1.03)}
+        .video-thumb-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.6) 0%,rgba(0,0,0,.15) 60%,transparent 100%)}
+        .video-thumb-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+        .video-thumb:hover .video-thumb-play{transform:translate(-50%,-50%) scale(1.1);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+        .video-thumb-play svg{width:28px;height:28px;margin-left:4px;fill:#1a1a2e}
+        .video-thumb-label{position:absolute;bottom:16px;left:20px;right:20px;color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+        .video-thumb-label span{background:rgba(255,0,0,.85);padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.3px}
         @keyframes spin{to{transform:rotate(360deg)}}
 
         /* ADMIN TABLE SORTABLE */
@@ -774,11 +777,12 @@ async function renderLesson() {
         <div class="lesson-breadcrumb">${mod.icon} ${mod.title} <span>›</span> Étape ${currentLessonIndex + 1}/${mod.lessons.length}</div>
         <h1 class="lesson-title">${fullLesson.title}</h1>
         <p class="lesson-desc">Étape ${currentLessonIndex + 1} sur ${mod.lessons.length} — ${fullLesson.duration}</p>
-        ${fullLesson.video_url ? `<div class="video-wrapper" id="videoWrapper">
-            <div class="video-loader"><div class="video-loader-spinner"></div><span>Chargement de la vidéo…</span></div>
-            <iframe src="https://www.youtube.com/embed/${esc(fullLesson.video_url)}?rel=0" allowfullscreen
-                onload="document.getElementById('videoWrapper')?.classList.add('loaded')"></iframe>
-        </div>` : `<div class="lesson-tip" style="margin-bottom:40px"><div class="lesson-tip-title">🎬 Vidéo</div>Vidéo bientôt disponible.</div>`}
+        ${fullLesson.video_url ? `<a class="video-thumb" href="https://www.youtube.com/watch?v=${esc(fullLesson.video_url)}" target="_blank" rel="noopener">
+            <img class="video-thumb-img" src="https://img.youtube.com/vi/${esc(fullLesson.video_url)}/hqdefault.jpg" alt="Miniature vidéo">
+            <div class="video-thumb-overlay"></div>
+            <div class="video-thumb-play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+            <div class="video-thumb-label"><span>YouTube</span> Regarder la vidéo</div>
+        </a>` : `<div class="lesson-tip" style="margin-bottom:40px"><div class="lesson-tip-title">🎬 Vidéo</div>Vidéo bientôt disponible.</div>`}
         <div class="lesson-text">${fullLesson.content}</div>
         <div class="lesson-nav">
             ${!isFirst ? `<button class="lesson-nav-btn lesson-nav-prev" onclick="goToLesson(${currentLessonIndex - 1})">← Précédent</button>` : '<div></div>'}
