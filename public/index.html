@@ -245,6 +245,8 @@
         .icon-btn.danger:hover{background:rgba(255,107,53,.1)}
         .icon-btn.success{border-color:rgba(0,194,136,.3);color:var(--ts-green)}
         .icon-btn.success:hover{background:rgba(0,194,136,.1)}
+        .group-card{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:20px 24px;margin-bottom:16px;transition:var(--transition)}
+        .group-card:hover{background:var(--glass-hover)}
 
         /* TOAST */
         .toast{position:fixed;bottom:30px;right:30px;background:var(--gradient-accent);color:#fff;padding:16px 28px;border-radius:var(--radius-md);font-weight:600;font-size:14px;z-index:10000;animation:fadeUp .4s ease;display:none;box-shadow:0 10px 40px rgba(0,163,163,.3)}
@@ -440,6 +442,7 @@
                     <div class="admin-tabs">
                         <button class="admin-tab-btn active" onclick="switchAdminTab('learners',this)">👥 Apprenants</button>
                         <button class="admin-tab-btn" onclick="switchAdminTab('admins',this)">🛡️ Administrateurs</button>
+                        <button class="admin-tab-btn" onclick="switchAdminTab('groups',this)">🔒 Accès</button>
                     </div>
                 </div>
                 <!-- Section Apprenants -->
@@ -462,6 +465,8 @@
                 </div>
                 <!-- Section Administrateurs (superadmin only) -->
                 <div id="adminAdminsSection" style="display:none"></div>
+                <!-- Section Groupes & Accès (superadmin only) -->
+                <div id="adminGroupsSection" style="display:none"></div>
             </div>
         </div>
     </div>
@@ -863,6 +868,7 @@ async function renderAdmin() {
     document.getElementById('adminTabsContainer').style.display = isSuperAdmin ? '' : 'none';
     document.getElementById('adminLearnersSection').style.display = '';
     document.getElementById('adminAdminsSection').style.display = 'none';
+    document.getElementById('adminGroupsSection').style.display = 'none';
     document.querySelectorAll('.admin-tab-btn').forEach((b,i) => b.classList.toggle('active', i===0));
 
     try {
@@ -987,7 +993,9 @@ function switchAdminTab(tab, btn) {
     if (btn) btn.classList.add('active');
     document.getElementById('adminLearnersSection').style.display = tab === 'learners' ? '' : 'none';
     document.getElementById('adminAdminsSection').style.display = tab === 'admins' ? '' : 'none';
+    document.getElementById('adminGroupsSection').style.display = tab === 'groups' ? '' : 'none';
     if (tab === 'admins') renderAdminsPanel();
+    if (tab === 'groups') renderGroupsPanel();
 }
 
 let _adminSites = [];
@@ -1193,6 +1201,227 @@ async function confirmResetPassword(id, password) {
         await api('/api/admin/admins/' + id, 'PATCH', { action: 'reset_password', password });
         document.getElementById('resetPwdModal').remove();
         showToast('✅ Mot de passe réinitialisé');
+    } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+// ======================== GROUPES & ACCÈS (superadmin) ========================
+async function renderGroupsPanel() {
+    const section = document.getElementById('adminGroupsSection');
+    section.innerHTML = `<div style="color:var(--text-tertiary);padding:60px;text-align:center">Chargement...</div>`;
+    try {
+        const [{ modules, groups }, groupsData] = await Promise.all([
+            api('/api/admin/modules-access'),
+            api('/api/admin/groups')
+        ]);
+        const allGroups = groupsData.groups;
+
+        section.innerHTML = `
+        <!-- Modules & Visibilité -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px">
+            <div><div class="section-label">Contrôle d'accès</div><div class="section-title" style="font-size:28px">Modules & Visibilité</div></div>
+        </div>
+        <div class="admin-table-wrap" style="margin-bottom:48px">
+            <table class="admin-table" id="moduleAccessTable">
+                <thead><tr><th>Module</th><th>Visibilité</th><th>Membres avec accès</th></tr></thead>
+                <tbody>${modules.map(m => {
+                    const grpCount = m.access_group_id
+                        ? (allGroups.find(g => g.id === m.access_group_id)?.member_count || 0)
+                        : '—';
+                    return `<tr>
+                        <td><span style="margin-right:8px">${esc(m.icon)}</span>${esc(m.title)}</td>
+                        <td>
+                            <select onchange="setModuleAccess('${esc(m.id)}',this.value)"
+                                style="padding:7px 12px;border-radius:var(--radius-sm);background:rgba(255,255,255,.05);border:1px solid var(--glass-border);color:var(--text-primary);font-size:13px;font-family:inherit;cursor:pointer;min-width:180px">
+                                <option value="" ${!m.access_group_id ? 'selected' : ''}>🌍 Tous les apprenants</option>
+                                ${allGroups.map(g => `<option value="${g.id}" ${m.access_group_id === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="color:var(--text-tertiary);font-size:13px">${m.access_group_id ? grpCount + ' membre(s)' : 'Tout le monde'}</td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>
+        </div>
+
+        <!-- Groupes -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px">
+            <div><div class="section-label">Groupes</div><div class="section-title" style="font-size:28px">Gestion des groupes</div></div>
+            <button onclick="openCreateGroupModal()" style="padding:12px 24px;border-radius:100px;font-size:14px;font-weight:700;cursor:pointer;border:none;background:var(--gradient-main);color:#fff;font-family:inherit">+ Créer un groupe</button>
+        </div>
+        <div id="groupsList">
+            ${allGroups.length === 0
+                ? `<div style="text-align:center;padding:60px;color:var(--text-tertiary)">Aucun groupe créé. Créez votre premier groupe ci-dessus.</div>`
+                : allGroups.map(g => renderGroupCard(g)).join('')
+            }
+        </div>`;
+    } catch(e) {
+        section.innerHTML = `<div style="color:#ff8f65;padding:40px;text-align:center">Erreur : ${esc(e.message)}</div>`;
+    }
+}
+
+function renderGroupCard(g) {
+    const moduleNames = (g.modules || []).map(m => `${esc(m.icon)} ${esc(m.title)}`).join(', ') || '<span style="color:var(--text-tertiary)">Aucun module restreint</span>';
+    return `<div class="group-card" id="grp-${g.id}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div>
+                <div style="font-size:17px;font-weight:800;margin-bottom:4px">${esc(g.name)}</div>
+                <div style="font-size:13px;color:var(--text-tertiary);margin-bottom:8px">${esc(g.description || '')}</div>
+                <div style="font-size:12px;color:var(--text-secondary)">📦 Modules : ${moduleNames}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0">
+                <button onclick="openGroupMembersModal(${g.id},'${esc(g.name)}')" class="icon-btn">👥 ${g.member_count} membre(s)</button>
+                <button onclick="deleteGroup(${g.id},'${esc(g.name)}')" class="icon-btn danger">🗑️ Supprimer</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function setModuleAccess(moduleId, groupId) {
+    try {
+        await api('/api/admin/modules-access/' + moduleId, 'PATCH', { access_group_id: groupId || null });
+        showToast('✅ Visibilité mise à jour');
+        renderGroupsPanel();
+    } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+function openCreateGroupModal() {
+    const existing = document.getElementById('createGroupModal');
+    if (existing) existing.remove();
+    const m = document.createElement('div');
+    m.id = 'createGroupModal';
+    m.className = 'modal-overlay show';
+    m.innerHTML = `
+        <div class="modal" style="max-width:480px;text-align:left;padding:40px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+                <h2 style="font-size:20px;font-weight:800;margin:0">Créer un groupe</h2>
+                <button onclick="document.getElementById('createGroupModal').remove()" style="background:none;border:none;color:var(--text-tertiary);font-size:24px;cursor:pointer;line-height:1">×</button>
+            </div>
+            <div id="createGroupError" class="auth-error"></div>
+            <div class="form-group"><label class="form-label">Nom du groupe</label>
+                <input class="form-input" id="newGroupName" placeholder="ex: Formation Encadrants 2025" autocomplete="off">
+            </div>
+            <div class="form-group"><label class="form-label">Description (optionnel)</label>
+                <input class="form-input" id="newGroupDesc" placeholder="Description du groupe..." autocomplete="off">
+            </div>
+            <div style="display:flex;gap:12px;margin-top:8px">
+                <button onclick="document.getElementById('createGroupModal').remove()" class="icon-btn" style="flex:1;padding:14px;border-radius:var(--radius-sm);font-size:14px">Annuler</button>
+                <button onclick="submitCreateGroup()" style="flex:2;padding:14px;border-radius:var(--radius-sm);border:none;background:var(--gradient-main);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Créer →</button>
+            </div>
+        </div>`;
+    m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+    setTimeout(() => document.getElementById('newGroupName')?.focus(), 100);
+}
+
+async function submitCreateGroup() {
+    const name = document.getElementById('newGroupName').value.trim();
+    const description = document.getElementById('newGroupDesc').value.trim();
+    const errEl = document.getElementById('createGroupError');
+    errEl.classList.remove('show');
+    if (!name) { errEl.textContent = 'Le nom est requis.'; errEl.classList.add('show'); return; }
+    try {
+        await api('/api/admin/groups', 'POST', { name, description });
+        document.getElementById('createGroupModal').remove();
+        showToast('✅ Groupe créé');
+        renderGroupsPanel();
+    } catch(e) { errEl.textContent = e.message; errEl.classList.add('show'); }
+}
+
+async function deleteGroup(id, name) {
+    if (!confirm(`Supprimer le groupe "${name}" ?\nLes modules associés deviendront visibles par tous.`)) return;
+    try {
+        await api('/api/admin/groups/' + id, 'DELETE');
+        showToast('✅ Groupe supprimé');
+        renderGroupsPanel();
+    } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+// Modal membres d'un groupe
+async function openGroupMembersModal(groupId, groupName) {
+    const existing = document.getElementById('groupMembersModal');
+    if (existing) existing.remove();
+    const m = document.createElement('div');
+    m.id = 'groupMembersModal';
+    m.className = 'modal-overlay show';
+    m.innerHTML = `<div class="modal" style="max-width:600px;text-align:left;padding:40px;overflow-y:auto;max-height:90vh">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <h2 style="font-size:20px;font-weight:800;margin:0">👥 ${esc(groupName)}</h2>
+            <button onclick="document.getElementById('groupMembersModal').remove()" style="background:none;border:none;color:var(--text-tertiary);font-size:24px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div id="groupMembersContent"><div style="text-align:center;padding:40px;color:var(--text-tertiary)">Chargement...</div></div>
+    </div>`;
+    m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+    await loadGroupMembers(groupId, groupName);
+}
+
+let _gmSearchTimeout;
+async function loadGroupMembers(groupId, groupName, search = '') {
+    const content = document.getElementById('groupMembersContent');
+    if (!content) return;
+    try {
+        let url = '/api/admin/groups/' + groupId + '/members';
+        if (search) url += '?search=' + encodeURIComponent(search);
+        const { members, nonMembers } = await api(url);
+
+        content.innerHTML = `
+            <!-- Membres actuels -->
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-bottom:10px">
+                Membres (${members.length})
+            </div>
+            <div style="margin-bottom:24px;max-height:220px;overflow-y:auto;border:1px solid var(--glass-border);border-radius:var(--radius-sm)">
+                ${members.length === 0
+                    ? `<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">Aucun membre dans ce groupe</div>`
+                    : members.map(u => `
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--glass-border)">
+                            <div>
+                                <div style="font-size:14px;font-weight:600">${esc(u.name)}</div>
+                                <div style="font-size:11px;color:var(--text-tertiary)">${esc(u.email)} · ${esc(u.site_name || '—')}</div>
+                            </div>
+                            <button onclick="removeMember(${groupId},'${esc(groupName)}',${u.id})" class="icon-btn danger" style="padding:5px 10px;font-size:12px">✕ Retirer</button>
+                        </div>`).join('')
+                }
+            </div>
+
+            <!-- Ajouter des membres -->
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-bottom:10px">
+                Ajouter des apprenants
+            </div>
+            <input class="form-input" placeholder="🔍 Rechercher par nom ou email..." style="margin-bottom:12px"
+                oninput="(function(v){ clearTimeout(_gmSearchTimeout); _gmSearchTimeout=setTimeout(()=>loadGroupMembers(${groupId},'${esc(groupName)}',v),300); })(this.value)"
+                value="${esc(search)}">
+            <div style="max-height:240px;overflow-y:auto;border:1px solid var(--glass-border);border-radius:var(--radius-sm)">
+                ${nonMembers.length === 0
+                    ? `<div style="padding:20px;text-align:center;color:var(--text-tertiary);font-size:13px">${search ? 'Aucun résultat' : 'Tous les apprenants sont déjà membres'}</div>`
+                    : nonMembers.map(u => `
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--glass-border)">
+                            <div>
+                                <div style="font-size:14px;font-weight:600">${esc(u.name)}</div>
+                                <div style="font-size:11px;color:var(--text-tertiary)">${esc(u.email)} · ${esc(u.site_name || '—')}</div>
+                            </div>
+                            <button onclick="addMember(${groupId},'${esc(groupName)}',${u.id})" class="icon-btn success" style="padding:5px 10px;font-size:12px">+ Ajouter</button>
+                        </div>`).join('')
+                }
+            </div>`;
+    } catch(e) {
+        if (content) content.innerHTML = `<div style="color:#ff8f65;padding:20px">Erreur : ${esc(e.message)}</div>`;
+    }
+}
+
+async function addMember(groupId, groupName, userId) {
+    try {
+        await api('/api/admin/groups/' + groupId + '/members', 'POST', { userIds: [userId] });
+        showToast('✅ Apprenant ajouté au groupe');
+        await loadGroupMembers(groupId, groupName);
+        renderGroupsPanel();
+    } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
+}
+
+async function removeMember(groupId, groupName, userId) {
+    try {
+        await api('/api/admin/groups/' + groupId + '/members/' + userId, 'DELETE');
+        showToast('✅ Membre retiré du groupe');
+        await loadGroupMembers(groupId, groupName);
+        renderGroupsPanel();
     } catch(e) { showToast('⚠️ ' + e.message, '#FF6B35'); }
 }
 

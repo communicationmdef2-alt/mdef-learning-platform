@@ -21,9 +21,12 @@ async function initDB() {
     db.exec(`CREATE TABLE IF NOT EXISTS lessons (id TEXT PRIMARY KEY, module_id TEXT NOT NULL REFERENCES modules(id), title TEXT NOT NULL, duration TEXT, video_url TEXT, content TEXT, section_title TEXT, sort_order INTEGER DEFAULT 0)`);
     db.exec(`CREATE TABLE IF NOT EXISTS user_progress (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, lesson_id TEXT NOT NULL, completed INTEGER DEFAULT 0, completed_at DATETIME, video_watched_pct INTEGER DEFAULT 0, UNIQUE(user_id, lesson_id))`);
     db.exec(`CREATE TABLE IF NOT EXISTS sessions_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, login_at DATETIME DEFAULT CURRENT_TIMESTAMP, logout_at DATETIME, duration_minutes INTEGER DEFAULT 0, ip_address TEXT, user_agent TEXT)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS access_groups (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS group_members (group_id INTEGER NOT NULL REFERENCES access_groups(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, added_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (group_id, user_id))`);
 
-    // Migration : ajouter section_title aux anciennes BDs
+    // Migrations
     try { db.exec('ALTER TABLE lessons ADD COLUMN section_title TEXT'); } catch(e) {}
+    try { db.exec('ALTER TABLE modules ADD COLUMN access_group_id INTEGER REFERENCES access_groups(id) ON DELETE SET NULL'); } catch(e) {}
 
     // ======================== INDEX ========================
     db.exec('CREATE INDEX IF NOT EXISTS idx_users_site ON users(site_id)');
@@ -48,6 +51,22 @@ async function initDB() {
         ['entretien','Réussir son entretien',"Préparez-vous efficacement aux entretiens.",'🎯','green',3],
         ['numerique','Outils numériques',"Maîtrisez les outils numériques essentiels.",'💻','orange',4]
     ].forEach(([id,t,d,i,c,o]) => insertModule.run(id,t,d,i,c,o));
+
+    // ======================== MODULE RESTREINT (demo) ========================
+    // Crée le groupe de démo si inexistant
+    let demoGroup = db.prepare("SELECT id FROM access_groups WHERE name = 'Formation Avancée'").get();
+    if (!demoGroup) {
+        const r = db.prepare("INSERT INTO access_groups (name, description) VALUES (?, ?)").run(
+            'Formation Avancée', 'Accès exclusif à des contenus avancés sélectionnés'
+        );
+        demoGroup = { id: r.lastInsertRowid };
+    }
+    // Module restreint (INSERT OR IGNORE = ne pas écraser si déjà là)
+    db.prepare('INSERT OR IGNORE INTO modules (id,title,description,icon,color,sort_order,access_group_id) VALUES (?,?,?,?,?,?,?)').run(
+        'avance', 'Formation Avancée', 'Contenus exclusifs pour aller encore plus loin dans votre recherche d\'emploi.', '⭐', 'purple', 5, demoGroup.id
+    );
+    // S'assure que le module de démo est bien rattaché au groupe (migration BDs existantes)
+    db.prepare("UPDATE modules SET access_group_id = ? WHERE id = 'avance' AND access_group_id IS NULL").run(demoGroup.id);
 
     // ======================== LEÇONS — autres modules ========================
     const insertLesson = db.prepare('INSERT OR IGNORE INTO lessons (id,module_id,title,duration,video_url,content,sort_order) VALUES (?,?,?,?,?,?,?)');

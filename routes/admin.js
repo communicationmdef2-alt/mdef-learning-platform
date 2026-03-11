@@ -443,5 +443,142 @@ module.exports = function(db) {
         }
     });
 
+    // ====== GROUPES D'ACCÈS (superadmin uniquement) ======
+
+    // Liste tous les groupes avec nb membres + modules associés
+    router.get('/groups', requireSuperAdmin, (req, res) => {
+        try {
+            const groups = db.prepare(`
+                SELECT g.id, g.name, g.description, g.created_at,
+                       COUNT(DISTINCT gm.user_id) as member_count
+                FROM access_groups g
+                LEFT JOIN group_members gm ON g.id = gm.group_id
+                GROUP BY g.id ORDER BY g.name
+            `).all();
+            // Modules associés à chaque groupe
+            const modules = db.prepare('SELECT id, title, icon, access_group_id FROM modules WHERE access_group_id IS NOT NULL').all();
+            const modulesByGroup = {};
+            modules.forEach(m => {
+                if (!modulesByGroup[m.access_group_id]) modulesByGroup[m.access_group_id] = [];
+                modulesByGroup[m.access_group_id].push(m);
+            });
+            res.json({ groups: groups.map(g => ({ ...g, modules: modulesByGroup[g.id] || [] })) });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
+    // Créer un groupe
+    router.post('/groups', requireSuperAdmin, (req, res) => {
+        try {
+            const { name, description } = req.body;
+            if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
+            const existing = db.prepare('SELECT id FROM access_groups WHERE name = ?').get(name.trim());
+            if (existing) return res.status(400).json({ error: 'Ce nom de groupe existe déjà' });
+            const r = db.prepare('INSERT INTO access_groups (name, description) VALUES (?, ?)').run(name.trim(), description || '');
+            res.json({ success: true, id: r.lastInsertRowid });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
+    // Supprimer un groupe
+    router.delete('/groups/:id', requireSuperAdmin, (req, res) => {
+        try {
+            const id = parseInt(req.params.id);
+            // Détacher les modules rattachés à ce groupe
+            db.prepare('UPDATE modules SET access_group_id = NULL WHERE access_group_id = ?').run(id);
+            db.prepare('DELETE FROM access_groups WHERE id = ?').run(id);
+            res.json({ success: true });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
+    // Membres d'un groupe (avec recherche)
+    router.get('/groups/:id/members', requireSuperAdmin, (req, res) => {
+        try {
+            const groupId = parseInt(req.params.id);
+            const { search } = req.query;
+            const group = db.prepare('SELECT * FROM access_groups WHERE id = ?').get(groupId);
+            if (!group) return res.status(404).json({ error: 'Groupe introuvable' });
+
+            // Membres actuels
+            const members = db.prepare(`
+                SELECT u.id, u.name, u.email, s.short_name as site_name, gm.added_at
+                FROM group_members gm
+                JOIN users u ON gm.user_id = u.id
+                LEFT JOIN sites s ON u.site_id = s.id
+                WHERE gm.group_id = ? AND u.role = 'learner'
+                ORDER BY u.name
+            `).all(groupId);
+
+            // Apprenants non membres (pour l'ajout), avec recherche optionnelle
+            let nonMembersQuery = `
+                SELECT u.id, u.name, u.email, s.short_name as site_name
+                FROM users u
+                LEFT JOIN sites s ON u.site_id = s.id
+                WHERE u.role = 'learner'
+                AND u.id NOT IN (SELECT user_id FROM group_members WHERE group_id = ?)
+            `;
+            const params = [groupId];
+            if (search && search.trim()) {
+                nonMembersQuery += ' AND (u.name LIKE ? OR u.email LIKE ?)';
+                params.push(`%${search.trim()}%`, `%${search.trim()}%`);
+            }
+            nonMembersQuery += ' ORDER BY u.name LIMIT 50';
+            const nonMembers = db.prepare(nonMembersQuery).all(...params);
+
+            res.json({ group, members, nonMembers });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
+    // Ajouter des membres à un groupe (bulk)
+    router.post('/groups/:id/members', requireSuperAdmin, (req, res) => {
+        try {
+            const groupId = parseInt(req.params.id);
+            const { userIds } = req.body;
+            if (!Array.isArray(userIds) || !userIds.length) return res.status(400).json({ error: 'userIds requis' });
+            const group = db.prepare('SELECT id FROM access_groups WHERE id = ?').get(groupId);
+            if (!group) return res.status(404).json({ error: 'Groupe introuvable' });
+            const insert = db.prepare('INSERT OR IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)');
+            const insertMany = db.transaction((ids) => ids.forEach(uid => insert.run(groupId, uid)));
+            insertMany(userIds.map(Number).filter(Boolean));
+            res.json({ success: true });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
+    // Retirer un membre d'un groupe
+    router.delete('/groups/:id/members/:userId', requireSuperAdmin, (req, res) => {
+        try {
+            db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ?').run(
+                parseInt(req.params.id), parseInt(req.params.userId)
+            );
+            res.json({ success: true });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
+    // Liste modules avec leur groupe d'accès
+    router.get('/modules-access', requireSuperAdmin, (req, res) => {
+        try {
+            const modules = db.prepare(`
+                SELECT m.id, m.title, m.icon, m.color, m.access_group_id,
+                       g.name as group_name
+                FROM modules m
+                LEFT JOIN access_groups g ON m.access_group_id = g.id
+                ORDER BY m.sort_order
+            `).all();
+            const groups = db.prepare('SELECT id, name FROM access_groups ORDER BY name').all();
+            res.json({ modules, groups });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
+    // Modifier l'accès d'un module
+    router.patch('/modules-access/:moduleId', requireSuperAdmin, (req, res) => {
+        try {
+            const { access_group_id } = req.body;
+            const mod = db.prepare('SELECT id FROM modules WHERE id = ?').get(req.params.moduleId);
+            if (!mod) return res.status(404).json({ error: 'Module introuvable' });
+            db.prepare('UPDATE modules SET access_group_id = ? WHERE id = ?').run(
+                access_group_id || null, req.params.moduleId
+            );
+            res.json({ success: true });
+        } catch(err) { console.error(err); res.status(500).json({ error: 'Erreur serveur' }); }
+    });
+
     return router;
 };

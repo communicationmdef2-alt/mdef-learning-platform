@@ -7,8 +7,17 @@ module.exports = function(db) {
     // ====== LISTE DES MODULES ======
     router.get('/modules', requireAuth, (req, res) => {
         try {
-            const modules = db.prepare('SELECT * FROM modules ORDER BY sort_order').all();
             const userId = req.session.userId;
+            // Filtre : modules publics OU modules dont l'user est membre du groupe
+            const modules = db.prepare(`
+                SELECT m.* FROM modules m
+                WHERE m.access_group_id IS NULL
+                   OR EXISTS (
+                       SELECT 1 FROM group_members gm
+                       WHERE gm.group_id = m.access_group_id AND gm.user_id = ?
+                   )
+                ORDER BY m.sort_order
+            `).all(userId);
 
             const result = modules.map(m => {
                 const lessons = db.prepare('SELECT id, title, duration, sort_order, section_title FROM lessons WHERE module_id = ? ORDER BY sort_order').all(m.id);
@@ -48,6 +57,14 @@ module.exports = function(db) {
         try {
             const lesson = db.prepare('SELECT * FROM lessons WHERE id = ?').get(req.params.id);
             if (!lesson) return res.status(404).json({ error: 'Leçon introuvable' });
+            // Vérifier que l'user a accès au module de cette leçon
+            const accessible = db.prepare(`
+                SELECT 1 FROM modules m WHERE m.id = ?
+                AND (m.access_group_id IS NULL OR EXISTS (
+                    SELECT 1 FROM group_members gm WHERE gm.group_id = m.access_group_id AND gm.user_id = ?
+                ))
+            `).get(lesson.module_id, req.session.userId);
+            if (!accessible) return res.status(403).json({ error: 'Accès non autorisé' });
 
             const progress = db.prepare(
                 'SELECT * FROM user_progress WHERE user_id = ? AND lesson_id = ?'
@@ -90,27 +107,42 @@ module.exports = function(db) {
     router.get('/stats', requireAuth, (req, res) => {
         try {
             const userId = req.session.userId;
+            const ACCESS_FILTER = `(m.access_group_id IS NULL OR EXISTS (
+                SELECT 1 FROM group_members gm WHERE gm.group_id = m.access_group_id AND gm.user_id = ?
+            ))`;
 
-            const totalLessons = db.prepare('SELECT COUNT(*) as count FROM lessons').get().count;
-            const completedLessons = db.prepare(
-                'SELECT COUNT(*) as count FROM user_progress WHERE user_id = ? AND completed = 1'
-            ).get(userId).count;
+            const totalLessons = db.prepare(`
+                SELECT COUNT(*) as count FROM lessons l
+                JOIN modules m ON l.module_id = m.id
+                WHERE ${ACCESS_FILTER}
+            `).get(userId).count;
 
-            const totalModules = db.prepare('SELECT COUNT(*) as count FROM modules').get().count;
+            const completedLessons = db.prepare(`
+                SELECT COUNT(*) as count FROM user_progress up
+                JOIN lessons l ON up.lesson_id = l.id
+                JOIN modules m ON l.module_id = m.id
+                WHERE up.user_id = ? AND up.completed = 1 AND ${ACCESS_FILTER}
+            `).get(userId, userId).count;
 
-            // Modules complétés — requête SQL unique, sans boucle N+1
+            const totalModules = db.prepare(`
+                SELECT COUNT(*) as count FROM modules m WHERE ${ACCESS_FILTER}
+            `).get(userId).count;
+
+            // Modules complétés — uniquement parmi les modules accessibles
             const completedModules = db.prepare(`
                 SELECT COUNT(*) as count FROM (
                     SELECT l.module_id
                     FROM user_progress up
                     JOIN lessons l ON up.lesson_id = l.id
+                    JOIN modules m ON l.module_id = m.id
                     WHERE up.user_id = ? AND up.completed = 1
+                    AND ${ACCESS_FILTER}
                     GROUP BY l.module_id
                     HAVING COUNT(DISTINCT up.lesson_id) = (
                         SELECT COUNT(*) FROM lessons WHERE module_id = l.module_id
                     )
                 )
-            `).get(userId).count;
+            `).get(userId, userId).count;
 
             res.json({
                 total_lessons: totalLessons,
