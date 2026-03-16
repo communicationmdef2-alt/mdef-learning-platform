@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talent Studio — Plateforme d'Apprentissage</title>
-    <link rel="icon" type="image/png" href="/icon-192.png">
-    <link rel="apple-touch-icon" href="/icon-512.png">
+    <title>Talent' — Plateforme d'Apprentissage</title>
+    <link rel="icon" type="image/png" href="images/logottalentstudioflavicon.png">
+    <link rel="apple-touch-icon" href="images/logottalentstudioflavicon.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#7c3fdb">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Talent Studio">
+    <meta name="apple-mobile-web-app-title" content="Talent'">
     <style>
         /* FONTS */
         @font-face{font-family:'Galano';src:url('fonts/GalanoGrotesqueRegular.otf') format('opentype');font-weight:400;font-display:swap}
@@ -329,8 +329,8 @@
 
     <nav class="navbar">
         <div class="nav-logo" onclick="navigate('landing')">
-            <div class="nav-logo-icon"><img src="images/5.png" alt="Talent Studio"></div>
-            <div class="nav-logo-text"><span>Talent</span> Studio</div>
+            <div class="nav-logo-icon"><img src="images/logottalentstudioflavicon.png" alt="Talent'"></div>
+            <div class="nav-logo-text"><span>Talent'</span></div>
         </div>
         <div class="nav-links" id="navLinks"></div>
         <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Changer de thème">🌙</button>
@@ -344,13 +344,12 @@
         <!-- LANDING -->
         <div class="page active" id="page-landing">
             <div class="hero">
-                <div class="hero-badge animate-up"><span class="hero-badge-dot"></span>Talent Studio</div>
+                <div class="hero-badge animate-up"><span class="hero-badge-dot"></span>Talent'</div>
                 <div class="hero-logos animate-up">
-                    <img src="images/1.png" alt="Talent Studio" class="hero-logo hero-logo-ts">
-                    <img src="images/by-mdef.png" alt="By MDEF" class="hero-logo">
+                    <img src="images/logotalentstudio1.png" alt="Talent'" class="hero-logo hero-logo-ts">
                 </div>
                 <h1 class="animate-up d1">Avancez à votre rythme,<br><span class="gradient-text">grâce à notre accompagnement.</span></h1>
-                <p class="animate-up d2">Talent Studio vous aide à révéler votre potentiel, à construire une candidature impactante et à maîtriser votre présentation pour réussir vos entretiens en toute confiance.<br><br>Ici, nous construisons votre avenir, ensemble.</p>
+                <p class="animate-up d2">Talent' vous aide à révéler votre potentiel, à construire une candidature impactante et à maîtriser votre présentation pour réussir vos entretiens en toute confiance.<br><br>Ici, nous construisons votre avenir, ensemble.</p>
                 <div class="hero-cta animate-up d3">
                     <button class="btn btn-primary" onclick="navigate('register')">Commencer gratuitement →</button>
                     <button class="btn btn-secondary" onclick="navigate('login')">J'ai déjà un compte</button>
@@ -508,9 +507,9 @@ async function api(url, method = 'GET', body = null) {
 // ======================== MODULE IMAGES ========================
 // Ajoutez ici l'URL de l'image pour chaque module (ou laissez null pour le dégradé coloré)
 const MODULE_IMAGES = {
-    'cv':        'images/cv.png',
-    'lettre':    'images/lettre-de-motivation.png',
-    'entretien': 'images/entretien.png',
+    'cv':        'images/CV.png',
+    'lettre':    'images/LM.png',
+    'entretien': 'images/Entretient.png',
     'numerique': 'images/numerique.png'
 };
 
